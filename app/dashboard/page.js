@@ -32,7 +32,7 @@ export default function Dashboard() {
         setUser(user)
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('display_name, university')
+          .select('display_name, university, major1, major2')
           .eq('id', user.id)
           .single()
         setProfile(profileData)
@@ -170,7 +170,9 @@ export default function Dashboard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '60px' }}>
         <div>
           <h1 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.15em', textTransform: 'uppercase' }}>StudyGrind</h1>
-          <p style={{ fontSize: '12px', color: '#444', marginTop: '4px' }}>{profile?.display_name} · {profile?.university}</p>
+          <p style={{ fontSize: '12px', color: '#444', marginTop: '4px' }}>
+            {profile?.display_name} · {profile?.university} · {profile?.major1}{profile?.major2 ? ` & ${profile?.major2}` : ''}
+          </p>>
         </div>
         <button
           onClick={() => { setTempWork(workMinutes); setTempBreak(breakMinutes); setShowSettings(!showSettings) }}
