@@ -75,20 +75,22 @@ export default function Dashboard() {
       const userIds = Object.keys(totals)
       let profileQuery = supabase
         .from('profiles')
-        .select('id, display_name, university')
+        .select('id, display_name, university, major1, major2')
         .in('id', userIds)
 
       const { data: profiles } = await profileQuery
 
       const nameMap = {}
-      profiles?.forEach((p) => { nameMap[p.id] = { display_name: p.display_name, university: p.university } })
+      profiles?.forEach((p) => { nameMap[p.id] = { display_name: p.display_name, university: p.university, major1: p.major1, major2: p.major2 } })
 
       let sorted = Object.entries(totals)
         .map(([user_id, minutes]) => ({
           user_id,
           minutes,
           display_name: nameMap[user_id]?.display_name || 'Anonymous',
-          university: nameMap[user_id]?.university || ''
+          university: nameMap[user_id]?.university || '',
+          major1: nameMap[user_id]?.major1 || '',
+          major2: nameMap[user_id]?.major2 || ''
         }))
         .filter((entry) => uniFilter === 'All' || entry.university === uniFilter)
         .sort((a, b) => b.minutes - a.minutes)
@@ -261,14 +263,19 @@ export default function Dashboard() {
               borderLeft: isMe ? '2px solid #fff' : '2px solid transparent',
               paddingLeft: isMe ? '12px' : '0'
             }}>
-              <span style={{ fontSize: '13px', color: isMe ? '#fff' : '#888' }}>
-                <span style={{ color: '#333', marginRight: '12px' }}>#{index + 1}</span>
-                {isMe ? 'You' : entry.display_name}
-              </span>
+              <div>
+                <span style={{ fontSize: '13px', color: isMe ? '#fff' : '#888' }}>
+                  <span style={{ color: '#333', marginRight: '12px' }}>#{index + 1}</span>
+                  {isMe ? 'You' : entry.display_name}
+                </span>
+                <p style={{ fontSize: '11px', color: '#333', marginTop: '3px', paddingLeft: '24px' }}>
+                  {entry.university}{entry.major1 ? ` · ${entry.major1}` : ''}{entry.major2 ? ` & ${entry.major2}` : ''}
+                </p>
+              </div>
               <span style={{ fontSize: '13px', fontWeight: '600', color: isMe ? '#fff' : '#555' }}>{h}h {m}m</span>
             </div>
           )
-        })}
+          })}
       </div>
 
     </div>
