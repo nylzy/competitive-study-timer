@@ -172,7 +172,7 @@ export default function Dashboard() {
           <h1 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.15em', textTransform: 'uppercase' }}>StudyGrind</h1>
           <p style={{ fontSize: '12px', color: '#444', marginTop: '4px' }}>
             {profile?.display_name} · {profile?.university} · {profile?.major1}{profile?.major2 ? ` & ${profile?.major2}` : ''}
-          </p>>
+          </p>
         </div>
         <button
           onClick={() => { setTempWork(workMinutes); setTempBreak(breakMinutes); setShowSettings(!showSettings) }}
