@@ -4,8 +4,11 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 
+const UNIVERSITIES = ['All', 'UWA', 'Curtin', 'Murdoch', 'ECU', 'Notre Dame', 'Other']
+
 export default function Dashboard() {
   const [user, setUser] = useState(null)
+  const [profile, setProfile] = useState(null)
   const [workMinutes, setWorkMinutes] = useState(25)
   const [breakMinutes, setBreakMinutes] = useState(5)
   const [isBreak, setIsBreak] = useState(false)
@@ -13,6 +16,7 @@ export default function Dashboard() {
   const [running, setRunning] = useState(false)
   const [weeklyMinutes, setWeeklyMinutes] = useState(0)
   const [leaderboard, setLeaderboard] = useState([])
+  const [selectedUni, setSelectedUni] = useState('All')
   const [showSettings, setShowSettings] = useState(false)
   const [tempWork, setTempWork] = useState(25)
   const [tempBreak, setTempBreak] = useState(5)
@@ -26,8 +30,15 @@ export default function Dashboard() {
         router.push('/login')
       } else {
         setUser(user)
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('display_name, university')
+          .eq('id', user.id)
+          .single()
+        setProfile(profileData)
+        if (profileData?.university) setSelectedUni(profileData.university)
         fetchWeeklyMinutes(user.id)
-        fetchLeaderboard()
+        fetchLeaderboard(profileData?.university || 'All')
       }
     }
     getUser()
@@ -47,29 +58,42 @@ export default function Dashboard() {
     }
   }
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = async (uniFilter) => {
     const oneWeekAgo = new Date()
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
     const { data: sessions } = await supabase
       .from('study_sessions')
       .select('user_id, duration_minutes')
       .gte('created_at', oneWeekAgo.toISOString())
+
     if (sessions) {
       const totals = {}
       sessions.forEach((session) => {
         totals[session.user_id] = (totals[session.user_id] || 0) + session.duration_minutes
       })
+
       const userIds = Object.keys(totals)
-      const { data: profiles } = await supabase
+      let profileQuery = supabase
         .from('profiles')
-        .select('id, display_name')
+        .select('id, display_name, university')
         .in('id', userIds)
+
+      const { data: profiles } = await profileQuery
+
       const nameMap = {}
-      profiles?.forEach((p) => { nameMap[p.id] = p.display_name })
-      const sorted = Object.entries(totals)
-        .map(([user_id, minutes]) => ({ user_id, minutes, display_name: nameMap[user_id] || 'Anonymous' }))
+      profiles?.forEach((p) => { nameMap[p.id] = { display_name: p.display_name, university: p.university } })
+
+      let sorted = Object.entries(totals)
+        .map(([user_id, minutes]) => ({
+          user_id,
+          minutes,
+          display_name: nameMap[user_id]?.display_name || 'Anonymous',
+          university: nameMap[user_id]?.university || ''
+        }))
+        .filter((entry) => uniFilter === 'All' || entry.university === uniFilter)
         .sort((a, b) => b.minutes - a.minutes)
         .slice(0, 10)
+
       setLeaderboard(sorted)
     }
   }
@@ -77,7 +101,7 @@ export default function Dashboard() {
   const saveSession = async (minutes) => {
     await supabase.from('study_sessions').insert({ user_id: user.id, duration_minutes: minutes })
     fetchWeeklyMinutes(user.id)
-    fetchLeaderboard()
+    fetchLeaderboard(selectedUni)
   }
 
   const startTimer = () => {
@@ -126,6 +150,11 @@ export default function Dashboard() {
     setShowSettings(false)
   }
 
+  const handleUniChange = (uni) => {
+    setSelectedUni(uni)
+    fetchLeaderboard(uni)
+  }
+
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0')
     const s = (seconds % 60).toString().padStart(2, '0')
@@ -141,7 +170,7 @@ export default function Dashboard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '60px' }}>
         <div>
           <h1 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.15em', textTransform: 'uppercase' }}>StudyGrind</h1>
-          <p style={{ fontSize: '12px', color: '#444', marginTop: '4px' }}>{user?.email}</p>
+          <p style={{ fontSize: '12px', color: '#444', marginTop: '4px' }}>{profile?.display_name} · {profile?.university}</p>
         </div>
         <button
           onClick={() => { setTempWork(workMinutes); setTempBreak(breakMinutes); setShowSettings(!showSettings) }}
@@ -157,21 +186,11 @@ export default function Dashboard() {
           <div style={{ display: 'flex', gap: '24px', marginBottom: '20px' }}>
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>Work (minutes)</p>
-              <input
-                type="number"
-                value={tempWork}
-                onChange={(e) => setTempWork(e.target.value)}
-                min="1" max="120"
-              />
+              <input type="number" value={tempWork} onChange={(e) => setTempWork(e.target.value)} min="1" max="120" />
             </div>
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>Break (minutes)</p>
-              <input
-                type="number"
-                value={tempBreak}
-                onChange={(e) => setTempBreak(e.target.value)}
-                min="1" max="60"
-              />
+              <input type="number" value={tempBreak} onChange={(e) => setTempBreak(e.target.value)} min="1" max="60" />
             </div>
           </div>
           <button onClick={saveSettings}>Save</button>
@@ -201,7 +220,31 @@ export default function Dashboard() {
       </div>
 
       <div style={{ borderTop: '1px solid #1a1a1a', paddingTop: '40px' }}>
-        <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444', marginBottom: '24px' }}>Leaderboard</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444' }}>Leaderboard</p>
+          <select
+            value={selectedUni}
+            onChange={(e) => handleUniChange(e.target.value)}
+            style={{
+              background: '#111',
+              border: '1px solid #222',
+              color: '#888',
+              fontSize: '11px',
+              padding: '6px 10px',
+              outline: 'none',
+              letterSpacing: '0.05em'
+            }}
+          >
+            {UNIVERSITIES.map((u) => (
+              <option key={u} value={u}>{u}</option>
+            ))}
+          </select>
+        </div>
+
+        {leaderboard.length === 0 && (
+          <p style={{ fontSize: '12px', color: '#333' }}>No results for this university yet.</p>
+        )}
+
         {leaderboard.map((entry, index) => {
           const h = Math.floor(entry.minutes / 60)
           const m = entry.minutes % 60
