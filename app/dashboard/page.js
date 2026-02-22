@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [tempWork, setTempWork] = useState(25)
   const [tempBreak, setTempBreak] = useState(5)
   const [streak, setStreak] = useState(0)
+  const [leaderboardView, setLeaderboardView] = useState('weekly')
   const intervalRef = useRef(null)
   const router = useRouter()
 
@@ -60,47 +61,50 @@ export default function Dashboard() {
     }
   }
 
-  const fetchLeaderboard = async (uniFilter) => {
+  const fetchLeaderboard = async (uniFilter, view = 'weekly') => {
+  let query = supabase
+    .from('study_sessions')
+    .select('user_id, duration_minutes')
+
+  if (view === 'weekly') {
     const oneWeekAgo = new Date()
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-    const { data: sessions } = await supabase
-      .from('study_sessions')
-      .select('user_id, duration_minutes')
-      .gte('created_at', oneWeekAgo.toISOString())
-
-    if (sessions) {
-      const totals = {}
-      sessions.forEach((session) => {
-        totals[session.user_id] = (totals[session.user_id] || 0) + session.duration_minutes
-      })
-
-      const userIds = Object.keys(totals)
-      let profileQuery = supabase
-        .from('profiles')
-        .select('id, display_name, university, major1, major2')
-        .in('id', userIds)
-
-      const { data: profiles } = await profileQuery
-
-      const nameMap = {}
-      profiles?.forEach((p) => { nameMap[p.id] = { display_name: p.display_name, university: p.university, major1: p.major1, major2: p.major2 } })
-
-      let sorted = Object.entries(totals)
-        .map(([user_id, minutes]) => ({
-          user_id,
-          minutes,
-          display_name: nameMap[user_id]?.display_name || 'Anonymous',
-          university: nameMap[user_id]?.university || '',
-          major1: nameMap[user_id]?.major1 || '',
-          major2: nameMap[user_id]?.major2 || ''
-        }))
-        .filter((entry) => uniFilter === 'All' || entry.university === uniFilter)
-        .sort((a, b) => b.minutes - a.minutes)
-        .slice(0, 10)
-
-      setLeaderboard(sorted)
-    }
+    query = query.gte('created_at', oneWeekAgo.toISOString())
   }
+
+  const { data: sessions } = await query
+
+  if (sessions) {
+    const totals = {}
+    sessions.forEach((session) => {
+      totals[session.user_id] = (totals[session.user_id] || 0) + session.duration_minutes
+    })
+
+    const userIds = Object.keys(totals)
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, display_name, university, major1, major2')
+      .in('id', userIds)
+
+    const nameMap = {}
+    profiles?.forEach((p) => { nameMap[p.id] = { display_name: p.display_name, university: p.university, major1: p.major1, major2: p.major2 } })
+
+    let sorted = Object.entries(totals)
+      .map(([user_id, minutes]) => ({
+        user_id,
+        minutes,
+        display_name: nameMap[user_id]?.display_name || 'Anonymous',
+        university: nameMap[user_id]?.university || '',
+        major1: nameMap[user_id]?.major1 || '',
+        major2: nameMap[user_id]?.major2 || ''
+      }))
+      .filter((entry) => uniFilter === 'All' || entry.university === uniFilter)
+      .sort((a, b) => b.minutes - a.minutes)
+      .slice(0, 10)
+
+    setLeaderboard(sorted)
+  }
+}
 
   const fetchStreak = async (userId) => {
   const { data } = await supabase
@@ -141,7 +145,6 @@ export default function Dashboard() {
   const saveSession = async (minutes) => {
     await supabase.from('study_sessions').insert({ user_id: user.id, duration_minutes: minutes })
     fetchWeeklyMinutes(user.id)
-    fetchLeaderboard(selectedUni)
     fetchLeaderboard(selectedUni)
     fetchStreak(user.id)
   }
@@ -194,7 +197,7 @@ export default function Dashboard() {
 
   const handleUniChange = (uni) => {
     setSelectedUni(uni)
-    fetchLeaderboard(uni)
+    fetchLeaderboard(uni, leaderboardView)
   }
 
   const formatTime = (seconds) => {
@@ -271,25 +274,41 @@ export default function Dashboard() {
 
       <div style={{ borderTop: '1px solid #1a1a1a', paddingTop: '40px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
           <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444' }}>Leaderboard</p>
-          <select
-            value={selectedUni}
-            onChange={(e) => handleUniChange(e.target.value)}
-            style={{
-              background: '#111',
-              border: '1px solid #222',
-              color: '#888',
-              fontSize: '11px',
-              padding: '6px 10px',
-              outline: 'none',
-              letterSpacing: '0.05em'
-            }}
-          >
-            {UNIVERSITIES.map((u) => (
-              <option key={u} value={u}>{u}</option>
-            ))}
-          </select>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => { setLeaderboardView('weekly'); fetchLeaderboard(selectedUni, 'weekly') }}
+              style={{ background: leaderboardView === 'weekly' ? '#fff' : 'transparent', color: leaderboardView === 'weekly' ? '#000' : '#444', border: '1px solid #222', fontSize: '10px', padding: '4px 10px', letterSpacing: '0.05em' }}
+            >
+              Weekly
+            </button>
+            <button
+              onClick={() => { setLeaderboardView('alltime'); fetchLeaderboard(selectedUni, 'alltime') }}
+              style={{ background: leaderboardView === 'alltime' ? '#fff' : 'transparent', color: leaderboardView === 'alltime' ? '#000' : '#444', border: '1px solid #222', fontSize: '10px', padding: '4px 10px', letterSpacing: '0.05em' }}
+            >
+              All-time
+            </button>
+          </div>
         </div>
+        <select
+          value={selectedUni}
+          onChange={(e) => handleUniChange(e.target.value)}
+          style={{
+            background: '#111',
+            border: '1px solid #222',
+            color: '#888',
+            fontSize: '11px',
+            padding: '6px 10px',
+            outline: 'none',
+            letterSpacing: '0.05em'
+          }}
+        >
+          {UNIVERSITIES.map((u) => (
+            <option key={u} value={u}>{u}</option>
+          ))}
+        </select>
+      </div>
 
         {leaderboard.length === 0 && (
           <p style={{ fontSize: '12px', color: '#333' }}>No results for this university yet.</p>
