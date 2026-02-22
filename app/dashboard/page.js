@@ -20,6 +20,7 @@ export default function Dashboard() {
   const [showSettings, setShowSettings] = useState(false)
   const [tempWork, setTempWork] = useState(25)
   const [tempBreak, setTempBreak] = useState(5)
+  const [streak, setStreak] = useState(0)
   const intervalRef = useRef(null)
   const router = useRouter()
 
@@ -39,6 +40,7 @@ export default function Dashboard() {
         if (profileData?.university) setSelectedUni(profileData.university)
         fetchWeeklyMinutes(user.id)
         fetchLeaderboard(profileData?.university || 'All')
+        fetchStreak(user.id)
       }
     }
     getUser()
@@ -100,10 +102,48 @@ export default function Dashboard() {
     }
   }
 
+  const fetchStreak = async (userId) => {
+  const { data } = await supabase
+    .from('study_sessions')
+    .select('created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (!data || data.length === 0) {
+    setStreak(0)
+    return
+  }
+
+  // Get unique days
+  const days = [...new Set(data.map((s) => {
+    const d = new Date(s.created_at)
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+  }))]
+
+  // Count consecutive days back from today
+  let count = 0
+  const today = new Date()
+
+  for (let i = 0; i < days.length; i++) {
+    const expected = new Date(today)
+    expected.setDate(today.getDate() - i)
+    const expectedStr = `${expected.getFullYear()}-${expected.getMonth()}-${expected.getDate()}`
+    if (days[i] === expectedStr) {
+      count++
+    } else {
+      break
+    }
+  }
+
+  setStreak(count)
+}
+
   const saveSession = async (minutes) => {
     await supabase.from('study_sessions').insert({ user_id: user.id, duration_minutes: minutes })
     fetchWeeklyMinutes(user.id)
     fetchLeaderboard(selectedUni)
+    fetchLeaderboard(selectedUni)
+    fetchStreak(user.id)
   }
 
   const startTimer = () => {
@@ -218,9 +258,15 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div style={{ marginBottom: '60px', borderTop: '1px solid #1a1a1a', paddingTop: '40px' }}>
-        <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444', marginBottom: '8px' }}>This Week</p>
-        <p style={{ fontSize: '48px', fontWeight: '700' }}>{hours}h {mins}m</p>
+      <div style={{ marginBottom: '60px', borderTop: '1px solid #1a1a1a', paddingTop: '40px', display: 'flex', gap: '60px' }}>
+        <div>
+          <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444', marginBottom: '8px' }}>This Week</p>
+          <p style={{ fontSize: '48px', fontWeight: '700' }}>{hours}h {mins}m</p>
+        </div>
+        <div>
+          <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444', marginBottom: '8px' }}>Streak</p>
+          <p style={{ fontSize: '48px', fontWeight: '700' }}>{streak} <span style={{ fontSize: '20px', color: '#444', fontWeight: '400' }}>{streak === 1 ? 'day' : 'days'}</span></p>
+        </div>
       </div>
 
       <div style={{ borderTop: '1px solid #1a1a1a', paddingTop: '40px' }}>
