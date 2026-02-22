@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 const UNIVERSITIES = ['All', 'UWA', 'Curtin', 'Murdoch', 'ECU', 'Notre Dame', 'Other']
 
@@ -26,6 +27,7 @@ export default function Dashboard() {
   const [activeTask, setActiveTask] = useState(null)
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [newTaskUnit, setNewTaskUnit] = useState('')
+  const [unitData, setUnitData] = useState([])
   const intervalRef = useRef(null)
   const router = useRouter()
 
@@ -38,7 +40,7 @@ export default function Dashboard() {
         setUser(user)
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('display_name, university, major1, major2')
+          .select('display_name, university, major1, major2, units')
           .eq('id', user.id)
           .single()
         setProfile(profileData)
@@ -47,6 +49,7 @@ export default function Dashboard() {
         fetchLeaderboard(profileData?.university || 'All')
         fetchStreak(user.id)
         fetchTasks(user.id)
+        fetchUnitData(user.id)
       }
     }
     getUser()
@@ -125,6 +128,29 @@ export default function Dashboard() {
     setStreak(count)
   }
 
+  const fetchUnitData = async (userId) => {
+  const oneWeekAgo = new Date()
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+  const { data } = await supabase
+    .from('study_sessions')
+    .select('unit, duration_minutes')
+    .eq('user_id', userId)
+    .gte('created_at', oneWeekAgo.toISOString())
+
+  if (data) {
+    const totals = {}
+    data.forEach((s) => {
+      const key = s.unit || 'Untagged'
+      totals[key] = (totals[key] || 0) + s.duration_minutes
+    })
+    const formatted = Object.entries(totals).map(([unit, minutes]) => ({
+      unit,
+      hours: parseFloat((minutes / 60).toFixed(1))
+    }))
+    setUnitData(formatted)
+  }
+}
+
   const fetchTasks = async (userId) => {
     const { data } = await supabase
       .from('tasks')
@@ -165,6 +191,7 @@ export default function Dashboard() {
     fetchWeeklyMinutes(user.id)
     fetchLeaderboard(selectedUni, leaderboardView)
     fetchStreak(user.id)
+    fetchUnitData(user.id)
   }
 
   const startTimer = () => {
@@ -217,6 +244,8 @@ export default function Dashboard() {
   const hours = Math.floor(weeklyMinutes / 60)
   const mins = weeklyMinutes % 60
 
+
+  {/* Settings */}  
   return (
     <div style={{ maxWidth: '520px', margin: '80px auto', padding: '0 20px' }}>
 
@@ -227,12 +256,20 @@ export default function Dashboard() {
             {profile?.display_name} · {profile?.university} · {profile?.major1}{profile?.major2 ? ` & ${profile?.major2}` : ''}
           </p>
         </div>
-        <button
-          onClick={() => { setTempWork(workMinutes); setTempBreak(breakMinutes); setShowSettings(!showSettings) }}
-          style={{ background: 'transparent', color: '#444', border: '1px solid #222', fontSize: '11px', letterSpacing: '0.1em', padding: '6px 14px' }}
-        >
-          Settings
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => router.push('/profile')}
+            style={{ background: 'transparent', color: '#444', border: '1px solid #222', fontSize: '11px', letterSpacing: '0.1em', padding: '6px 14px' }}
+          >
+            Profile
+          </button>
+          <button
+            onClick={() => { setTempWork(workMinutes); setTempBreak(breakMinutes); setShowSettings(!showSettings) }}
+            style={{ background: 'transparent', color: '#444', border: '1px solid #222', fontSize: '11px', letterSpacing: '0.1em', padding: '6px 14px' }}
+          >
+            Settings
+          </button>
+        </div>
       </div>
 
       {showSettings && (
@@ -323,14 +360,16 @@ export default function Dashboard() {
             onKeyDown={(e) => e.key === 'Enter' && addTask()}
             style={{ flex: 2, padding: '8px', background: '#111', border: '1px solid #222', color: '#fff', fontSize: '13px', outline: 'none' }}
           />
-          <input
-            type="text"
-            placeholder="Unit (optional)"
+          <select
             value={newTaskUnit}
             onChange={(e) => setNewTaskUnit(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addTask()}
-            style={{ flex: 1, padding: '8px', background: '#111', border: '1px solid #222', color: '#fff', fontSize: '13px', outline: 'none' }}
-          />
+            style={{ flex: 1, padding: '8px', background: '#111', border: '1px solid #222', color: newTaskUnit ? '#fff' : '#555', fontSize: '13px', outline: 'none' }}
+          >
+            <option value="">No unit</option>
+            {(profile?.units || []).map((u) => (
+              <option key={u} value={u}>{u}</option>
+            ))}
+          </select>
           <button onClick={addTask} style={{ padding: '8px 16px', whiteSpace: 'nowrap' }}>+ Add</button>
         </div>
       </div>
@@ -346,6 +385,53 @@ export default function Dashboard() {
           <p style={{ fontSize: '48px', fontWeight: '700' }}>{streak} <span style={{ fontSize: '20px', color: '#444', fontWeight: '400' }}>{streak === 1 ? 'day' : 'days'}</span></p>
         </div>
       </div>
+
+      {/* Unit Breakdown */}
+      {unitData.length > 0 && (
+        <div style={{ marginBottom: '60px', borderTop: '1px solid #1a1a1a', paddingTop: '40px' }}>
+          <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444', marginBottom: '24px' }}>This Week by Unit</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={unitData} barSize={32}>
+              <XAxis
+                dataKey="unit"
+                tick={{ fill: '#444', fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: '#444', fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                unit="h"
+              />
+              <Tooltip
+                contentStyle={{ background: '#111', border: '1px solid #222', borderRadius: 0 }}
+                labelStyle={{ color: '#fff', fontSize: 11 }}
+                itemStyle={{ color: '#888', fontSize: 11 }}
+                formatter={(value) => [`${value}h`, 'Hours']}
+              />
+              <Bar dataKey="hours" radius={0}>
+                {unitData.map((entry, index) => {
+                  const colors = ['#ffffff', '#888888', '#555555', '#333333', '#222222']
+                  return <Cell key={entry.unit} fill={colors[index % colors.length]} />
+                })}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '16px' }}>
+            {unitData.map((entry, index) => {
+              const colors = ['#ffffff', '#888888', '#555555', '#333333', '#222222']
+              return (
+                <div key={entry.unit} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '8px', height: '8px', background: colors[index % colors.length] }} />
+                  <span style={{ fontSize: '11px', color: '#444' }}>{entry.unit} — {entry.hours}h</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Leaderboard */}
       <div style={{ borderTop: '1px solid #1a1a1a', paddingTop: '40px' }}>

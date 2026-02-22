@@ -16,38 +16,32 @@ const MAJORS = [
   'Software Engineering', 'Statistics', 'Other'
 ]
 
-function formatDisplayName(firstName, lastInitial) {
-  if (!firstName.trim() || !lastInitial.trim()) return ''
-  const first = firstName.trim().charAt(0).toUpperCase() + firstName.trim().slice(1).toLowerCase()
-  const initial = lastInitial.trim().charAt(0).toUpperCase()
-  return `${first} ${initial}`
-}
-
-export default function Setup() {
+export default function Profile() {
   const [user, setUser] = useState(null)
-  const [firstName, setFirstName] = useState('')
-  const [lastInitial, setLastInitial] = useState('')
   const [university, setUniversity] = useState('')
   const [major1, setMajor1] = useState('')
   const [major2, setMajor2] = useState('')
   const [units, setUnits] = useState([])
   const [newUnit, setNewUnit] = useState('')
+  const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
   const router = useRouter()
 
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/login')
-      } else {
-        setUser(user)
-        const { data } = await supabase
-          .from('profiles')
-          .select('display_name')
-          .eq('id', user.id)
-          .single()
-        if (data) router.push('/dashboard')
+      if (!user) { router.push('/login'); return }
+      setUser(user)
+      const { data } = await supabase
+        .from('profiles')
+        .select('university, major1, major2, units')
+        .eq('id', user.id)
+        .single()
+      if (data) {
+        setUniversity(data.university || '')
+        setMajor1(data.major1 || '')
+        setMajor2(data.major2 || '')
+        setUnits(data.units || [])
       }
     }
     getUser()
@@ -64,31 +58,22 @@ export default function Setup() {
     setUnits(units.filter((u) => u !== unit))
   }
 
-  const handleSubmit = async () => {
-    if (!firstName.trim() || !lastInitial.trim()) {
-      setError('Please enter your first name and last initial.')
-      return
-    }
-    if (!university) {
-      setError('Please select your university.')
-      return
-    }
-    if (!major1) {
-      setError('Please select at least one major.')
-      return
-    }
-
-    const display_name = formatDisplayName(firstName, lastInitial)
-
+  const handleSave = async () => {
     const { error } = await supabase
       .from('profiles')
-      .insert({ id: user.id, display_name, university, major1, major2: major2 || null, units })
-
+      .update({ university, major1, major2: major2 || null, units })
+      .eq('id', user.id)
     if (error) {
       setError(error.message)
     } else {
-      router.push('/dashboard')
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
     }
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
   }
 
   const selectStyle = {
@@ -97,34 +82,22 @@ export default function Setup() {
     color: '#888', fontSize: '14px', outline: 'none'
   }
 
-  const preview = formatDisplayName(firstName, lastInitial)
-
   return (
     <div style={{ maxWidth: '400px', margin: '80px auto', padding: '0 20px' }}>
-      <h1 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '8px' }}>StudyGrind</h1>
-      <p style={{ fontSize: '12px', color: '#444', marginBottom: '48px' }}>Set up your profile.</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '48px' }}>
+        <div>
+          <h1 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Profile</h1>
+          <p style={{ fontSize: '12px', color: '#444', marginTop: '4px' }}>{user?.email}</p>
+        </div>
+        <button
+          onClick={() => router.push('/dashboard')}
+          style={{ background: 'transparent', color: '#444', border: '1px solid #222', fontSize: '11px', padding: '6px 14px' }}
+        >
+          Dashboard
+        </button>
+      </div>
 
       {error && <p style={{ fontSize: '12px', color: '#ff4444', marginBottom: '16px' }}>{error}</p>}
-
-      <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>First name</p>
-      <input
-        type="text" placeholder="e.g. Tom" value={firstName}
-        onChange={(e) => setFirstName(e.target.value)}
-        style={{ marginBottom: '12px' }}
-      />
-
-      <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>Last initial</p>
-      <input
-        type="text" placeholder="e.g. N" value={lastInitial}
-        onChange={(e) => setLastInitial(e.target.value.slice(0, 1))}
-        maxLength={1} style={{ marginBottom: '12px' }}
-      />
-
-      {preview && (
-        <p style={{ fontSize: '12px', color: '#555', marginBottom: '24px' }}>
-          Display name: <span style={{ color: '#fff' }}>{preview}</span>
-        </p>
-      )}
 
       <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>University</p>
       <select value={university} onChange={(e) => setUniversity(e.target.value)} style={selectStyle}>
@@ -144,7 +117,7 @@ export default function Setup() {
         {MAJORS.filter((m) => m !== major1).map((m) => <option key={m} value={m}>{m}</option>)}
       </select>
 
-      <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>Units <span style={{ color: '#333' }}>(optional — add your current semester units)</span></p>
+      <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>Units</p>
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
         <input
           type="text" placeholder="e.g. CITS2200"
@@ -167,7 +140,12 @@ export default function Setup() {
         </div>
       )}
 
-      <button onClick={handleSubmit}>Let's go</button>
+      <button onClick={handleSave} style={{ marginRight: '12px' }}>
+        {saved ? 'Saved!' : 'Save changes'}
+      </button>
+      <button onClick={handleLogout} style={{ background: 'transparent', color: '#444', border: '1px solid #222' }}>
+        Log out
+      </button>
     </div>
   )
 }
