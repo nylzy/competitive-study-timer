@@ -22,6 +22,10 @@ export default function Dashboard() {
   const [tempBreak, setTempBreak] = useState(5)
   const [streak, setStreak] = useState(0)
   const [leaderboardView, setLeaderboardView] = useState('weekly')
+  const [tasks, setTasks] = useState([])
+  const [activeTask, setActiveTask] = useState(null)
+  const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [newTaskUnit, setNewTaskUnit] = useState('')
   const intervalRef = useRef(null)
   const router = useRouter()
 
@@ -42,6 +46,7 @@ export default function Dashboard() {
         fetchWeeklyMinutes(user.id)
         fetchLeaderboard(profileData?.university || 'All')
         fetchStreak(user.id)
+        fetchTasks(user.id)
       }
     }
     getUser()
@@ -62,90 +67,103 @@ export default function Dashboard() {
   }
 
   const fetchLeaderboard = async (uniFilter, view = 'weekly') => {
-  let query = supabase
-    .from('study_sessions')
-    .select('user_id, duration_minutes')
-
-  if (view === 'weekly') {
-    const oneWeekAgo = new Date()
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-    query = query.gte('created_at', oneWeekAgo.toISOString())
-  }
-
-  const { data: sessions } = await query
-
-  if (sessions) {
-    const totals = {}
-    sessions.forEach((session) => {
-      totals[session.user_id] = (totals[session.user_id] || 0) + session.duration_minutes
-    })
-
-    const userIds = Object.keys(totals)
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, display_name, university, major1, major2')
-      .in('id', userIds)
-
-    const nameMap = {}
-    profiles?.forEach((p) => { nameMap[p.id] = { display_name: p.display_name, university: p.university, major1: p.major1, major2: p.major2 } })
-
-    let sorted = Object.entries(totals)
-      .map(([user_id, minutes]) => ({
-        user_id,
-        minutes,
-        display_name: nameMap[user_id]?.display_name || 'Anonymous',
-        university: nameMap[user_id]?.university || '',
-        major1: nameMap[user_id]?.major1 || '',
-        major2: nameMap[user_id]?.major2 || ''
-      }))
-      .filter((entry) => uniFilter === 'All' || entry.university === uniFilter)
-      .sort((a, b) => b.minutes - a.minutes)
-      .slice(0, 10)
-
-    setLeaderboard(sorted)
-  }
-}
-
-  const fetchStreak = async (userId) => {
-  const { data } = await supabase
-    .from('study_sessions')
-    .select('created_at')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-
-  if (!data || data.length === 0) {
-    setStreak(0)
-    return
-  }
-
-  // Get unique days
-  const days = [...new Set(data.map((s) => {
-    const d = new Date(s.created_at)
-    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
-  }))]
-
-  // Count consecutive days back from today
-  let count = 0
-  const today = new Date()
-
-  for (let i = 0; i < days.length; i++) {
-    const expected = new Date(today)
-    expected.setDate(today.getDate() - i)
-    const expectedStr = `${expected.getFullYear()}-${expected.getMonth()}-${expected.getDate()}`
-    if (days[i] === expectedStr) {
-      count++
-    } else {
-      break
+    let query = supabase
+      .from('study_sessions')
+      .select('user_id, duration_minutes')
+    if (view === 'weekly') {
+      const oneWeekAgo = new Date()
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+      query = query.gte('created_at', oneWeekAgo.toISOString())
+    }
+    const { data: sessions } = await query
+    if (sessions) {
+      const totals = {}
+      sessions.forEach((session) => {
+        totals[session.user_id] = (totals[session.user_id] || 0) + session.duration_minutes
+      })
+      const userIds = Object.keys(totals)
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, display_name, university, major1, major2')
+        .in('id', userIds)
+      const nameMap = {}
+      profiles?.forEach((p) => { nameMap[p.id] = { display_name: p.display_name, university: p.university, major1: p.major1, major2: p.major2 } })
+      let sorted = Object.entries(totals)
+        .map(([user_id, minutes]) => ({
+          user_id, minutes,
+          display_name: nameMap[user_id]?.display_name || 'Anonymous',
+          university: nameMap[user_id]?.university || '',
+          major1: nameMap[user_id]?.major1 || '',
+          major2: nameMap[user_id]?.major2 || ''
+        }))
+        .filter((entry) => uniFilter === 'All' || entry.university === uniFilter)
+        .sort((a, b) => b.minutes - a.minutes)
+        .slice(0, 10)
+      setLeaderboard(sorted)
     }
   }
 
-  setStreak(count)
-}
+  const fetchStreak = async (userId) => {
+    const { data } = await supabase
+      .from('study_sessions')
+      .select('created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+    if (!data || data.length === 0) { setStreak(0); return }
+    const days = [...new Set(data.map((s) => {
+      const d = new Date(s.created_at)
+      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+    }))]
+    let count = 0
+    const today = new Date()
+    for (let i = 0; i < days.length; i++) {
+      const expected = new Date(today)
+      expected.setDate(today.getDate() - i)
+      const expectedStr = `${expected.getFullYear()}-${expected.getMonth()}-${expected.getDate()}`
+      if (days[i] === expectedStr) { count++ } else { break }
+    }
+    setStreak(count)
+  }
+
+  const fetchTasks = async (userId) => {
+    const { data } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('completed', false)
+      .order('created_at', { ascending: true })
+    if (data) setTasks(data)
+  }
+
+  const addTask = async () => {
+    if (!newTaskTitle.trim()) return
+    const { data } = await supabase
+      .from('tasks')
+      .insert({ user_id: user.id, title: newTaskTitle.trim(), unit: newTaskUnit.trim() || null })
+      .select()
+      .single()
+    if (data) {
+      setTasks([...tasks, data])
+      setNewTaskTitle('')
+      setNewTaskUnit('')
+    }
+  }
+
+  const completeTask = async (taskId) => {
+    await supabase.from('tasks').update({ completed: true }).eq('id', taskId)
+    if (activeTask?.id === taskId) setActiveTask(null)
+    setTasks(tasks.filter((t) => t.id !== taskId))
+  }
 
   const saveSession = async (minutes) => {
-    await supabase.from('study_sessions').insert({ user_id: user.id, duration_minutes: minutes })
+    await supabase.from('study_sessions').insert({
+      user_id: user.id,
+      duration_minutes: minutes,
+      task_id: activeTask?.id || null,
+      unit: activeTask?.unit || null
+    })
     fetchWeeklyMinutes(user.id)
-    fetchLeaderboard(selectedUni)
+    fetchLeaderboard(selectedUni, leaderboardView)
     fetchStreak(user.id)
   }
 
@@ -171,10 +189,7 @@ export default function Dashboard() {
     }, 1000)
   }
 
-  const pauseTimer = () => {
-    clearInterval(intervalRef.current)
-    setRunning(false)
-  }
+  const pauseTimer = () => { clearInterval(intervalRef.current); setRunning(false) }
 
   const resetTimer = () => {
     clearInterval(intervalRef.current)
@@ -186,19 +201,12 @@ export default function Dashboard() {
   const saveSettings = () => {
     const w = Math.max(1, Math.min(120, parseInt(tempWork) || 25))
     const b = Math.max(1, Math.min(60, parseInt(tempBreak) || 5))
-    setWorkMinutes(w)
-    setBreakMinutes(b)
-    setTimeLeft(w * 60)
-    setIsBreak(false)
-    clearInterval(intervalRef.current)
-    setRunning(false)
-    setShowSettings(false)
+    setWorkMinutes(w); setBreakMinutes(b); setTimeLeft(w * 60)
+    setIsBreak(false); clearInterval(intervalRef.current)
+    setRunning(false); setShowSettings(false)
   }
 
-  const handleUniChange = (uni) => {
-    setSelectedUni(uni)
-    fetchLeaderboard(uni, leaderboardView)
-  }
+  const handleUniChange = (uni) => { setSelectedUni(uni); fetchLeaderboard(uni, leaderboardView) }
 
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0')
@@ -244,7 +252,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+      {/* Timer */}
+      <div style={{ textAlign: 'center', marginBottom: '60px', borderTop: '1px solid #1a1a1a', paddingTop: '40px' }}>
+        {activeTask && (
+          <p style={{ fontSize: '11px', color: '#444', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>
+            {activeTask.unit ? `${activeTask.unit} · ` : ''}{activeTask.title}
+          </p>
+        )}
         <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444', marginBottom: '16px' }}>
           {isBreak ? 'Break' : 'Focus'}
         </p>
@@ -261,6 +275,67 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Tasks */}
+      <div style={{ marginBottom: '60px', borderTop: '1px solid #1a1a1a', paddingTop: '40px' }}>
+        <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444', marginBottom: '24px' }}>Tasks</p>
+
+        {activeTask && (
+          <div style={{ marginBottom: '16px', padding: '12px', border: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <p style={{ fontSize: '12px', color: '#fff' }}>{activeTask.title}</p>
+              {activeTask.unit && <p style={{ fontSize: '11px', color: '#444', marginTop: '2px' }}>{activeTask.unit}</p>}
+            </div>
+            <p style={{ fontSize: '10px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Active</p>
+          </div>
+        )}
+
+        {tasks.length === 0 && !activeTask && (
+          <p style={{ fontSize: '12px', color: '#333', marginBottom: '16px' }}>No tasks yet.</p>
+        )}
+
+        {tasks.map((task) => (
+          <div key={task.id} style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '12px 0', borderBottom: '1px solid #111'
+          }}>
+            <div
+              onClick={() => setActiveTask(activeTask?.id === task.id ? null : task)}
+              style={{ cursor: 'pointer', flex: 1 }}
+            >
+              <p style={{ fontSize: '13px', color: activeTask?.id === task.id ? '#fff' : '#666' }}>{task.title}</p>
+              {task.unit && <p style={{ fontSize: '11px', color: '#333', marginTop: '2px' }}>{task.unit}</p>}
+            </div>
+            <button
+              onClick={() => completeTask(task.id)}
+              style={{ background: 'transparent', color: '#333', border: '1px solid #222', fontSize: '10px', padding: '4px 10px', marginLeft: '12px' }}
+            >
+              Done
+            </button>
+          </div>
+        ))}
+
+        <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+          <input
+            type="text"
+            placeholder="New task"
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addTask()}
+            style={{ flex: 2, padding: '8px', background: '#111', border: '1px solid #222', color: '#fff', fontSize: '13px', outline: 'none' }}
+          />
+          <input
+            type="text"
+            placeholder="Unit (optional)"
+            value={newTaskUnit}
+            onChange={(e) => setNewTaskUnit(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addTask()}
+            style={{ flex: 1, padding: '8px', background: '#111', border: '1px solid #222', color: '#fff', fontSize: '13px', outline: 'none' }}
+          />
+          <button onClick={addTask} style={{ padding: '8px 16px', whiteSpace: 'nowrap' }}>+ Add</button>
+        </div>
+      </div>
+
+      {/* Stats */}
       <div style={{ marginBottom: '60px', borderTop: '1px solid #1a1a1a', paddingTop: '40px', display: 'flex', gap: '60px' }}>
         <div>
           <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444', marginBottom: '8px' }}>This Week</p>
@@ -272,43 +347,32 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Leaderboard */}
       <div style={{ borderTop: '1px solid #1a1a1a', paddingTop: '40px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-          <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444' }}>Leaderboard</p>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={() => { setLeaderboardView('weekly'); fetchLeaderboard(selectedUni, 'weekly') }}
-              style={{ background: leaderboardView === 'weekly' ? '#fff' : 'transparent', color: leaderboardView === 'weekly' ? '#000' : '#444', border: '1px solid #222', fontSize: '10px', padding: '4px 10px', letterSpacing: '0.05em' }}
-            >
-              Weekly
-            </button>
-            <button
-              onClick={() => { setLeaderboardView('alltime'); fetchLeaderboard(selectedUni, 'alltime') }}
-              style={{ background: leaderboardView === 'alltime' ? '#fff' : 'transparent', color: leaderboardView === 'alltime' ? '#000' : '#444', border: '1px solid #222', fontSize: '10px', padding: '4px 10px', letterSpacing: '0.05em' }}
-            >
-              All-time
-            </button>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444' }}>Leaderboard</p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => { setLeaderboardView('weekly'); fetchLeaderboard(selectedUni, 'weekly') }}
+                style={{ background: leaderboardView === 'weekly' ? '#fff' : 'transparent', color: leaderboardView === 'weekly' ? '#000' : '#444', border: '1px solid #222', fontSize: '10px', padding: '4px 10px', letterSpacing: '0.05em' }}
+              >Weekly</button>
+              <button
+                onClick={() => { setLeaderboardView('alltime'); fetchLeaderboard(selectedUni, 'alltime') }}
+                style={{ background: leaderboardView === 'alltime' ? '#fff' : 'transparent', color: leaderboardView === 'alltime' ? '#000' : '#444', border: '1px solid #222', fontSize: '10px', padding: '4px 10px', letterSpacing: '0.05em' }}
+              >All-time</button>
+            </div>
           </div>
+          <select
+            value={selectedUni}
+            onChange={(e) => handleUniChange(e.target.value)}
+            style={{ background: '#111', border: '1px solid #222', color: '#888', fontSize: '11px', padding: '6px 10px', outline: 'none', letterSpacing: '0.05em' }}
+          >
+            {UNIVERSITIES.map((u) => (
+              <option key={u} value={u}>{u}</option>
+            ))}
+          </select>
         </div>
-        <select
-          value={selectedUni}
-          onChange={(e) => handleUniChange(e.target.value)}
-          style={{
-            background: '#111',
-            border: '1px solid #222',
-            color: '#888',
-            fontSize: '11px',
-            padding: '6px 10px',
-            outline: 'none',
-            letterSpacing: '0.05em'
-          }}
-        >
-          {UNIVERSITIES.map((u) => (
-            <option key={u} value={u}>{u}</option>
-          ))}
-        </select>
-      </div>
 
         {leaderboard.length === 0 && (
           <p style={{ fontSize: '12px', color: '#333' }}>No results for this university yet.</p>
@@ -320,11 +384,8 @@ export default function Dashboard() {
           const isMe = entry.user_id === user?.id
           return (
             <div key={entry.user_id} style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '14px 0',
-              borderBottom: '1px solid #111',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '14px 0', borderBottom: '1px solid #111',
               borderLeft: isMe ? '2px solid #fff' : '2px solid transparent',
               paddingLeft: isMe ? '12px' : '0'
             }}>
@@ -340,7 +401,7 @@ export default function Dashboard() {
               <span style={{ fontSize: '13px', fontWeight: '600', color: isMe ? '#fff' : '#555' }}>{h}h {m}m</span>
             </div>
           )
-          })}
+        })}
       </div>
 
     </div>
