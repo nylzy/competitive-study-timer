@@ -29,7 +29,110 @@ export default function Dashboard() {
   const [newTaskUnit, setNewTaskUnit] = useState('')
   const [unitData, setUnitData] = useState([])
   const intervalRef = useRef(null)
+  const isBreakRef = useRef(false)
+  const workMinutesRef = useRef(25)
+  const breakMinutesRef = useRef(5)
+  const mountedRef = useRef(false)
+  const shouldAutoStart = useRef(false)
+  const timerFinishedRef = useRef(false)
   const router = useRouter()
+
+  useEffect(() => {
+    const savedWork = parseInt(localStorage.getItem('workMinutes')) || 25
+    const savedBreak = parseInt(localStorage.getItem('breakMinutes')) || 5
+    const wasRunning = localStorage.getItem('timerRunning') === 'true'
+    const savedTimeLeft = parseInt(localStorage.getItem('timerTimeLeft')) || null
+    const savedIsBreak = localStorage.getItem('timerIsBreak') === 'true'
+    const savedAt = parseInt(localStorage.getItem('timerSavedAt')) || null
+
+    setWorkMinutes(savedWork)
+    setBreakMinutes(savedBreak)
+
+    if (savedTimeLeft) {
+      if (wasRunning && savedAt) {
+        const secondsPassed = Math.floor((Date.now() - savedAt) / 1000)
+        const adjusted = Math.max(0, savedTimeLeft - secondsPassed)
+        setTimeLeft(adjusted > 0 ? adjusted : savedWork * 60)
+        setIsBreak(savedIsBreak)
+        if (adjusted > 0) {
+          shouldAutoStart.current = true
+          setRunning(true)
+        }
+      } else {
+        setTimeLeft(savedTimeLeft)
+        setIsBreak(savedIsBreak)
+      }
+    } else {
+      setTimeLeft(savedWork * 60)
+    }
+
+    const savedActiveTask = localStorage.getItem('activeTask')
+    if (savedActiveTask) {
+      try {
+        setActiveTask(JSON.parse(savedActiveTask))
+      } catch (e) {
+        localStorage.removeItem('activeTask')
+      }
+    }
+  }, [])
+
+  // Save timer state on every tick
+  useEffect(() => {
+    isBreakRef.current = isBreak
+    workMinutesRef.current = workMinutes
+    breakMinutesRef.current = breakMinutes
+    if (!mountedRef.current) {
+      mountedRef.current = true
+      return
+    }
+    localStorage.setItem('timerTimeLeft', timeLeft)
+    localStorage.setItem('timerIsBreak', isBreak)
+    localStorage.setItem('timerRunning', running ? 'true' : 'false')
+    localStorage.setItem('timerSavedAt', Date.now())
+  }, [timeLeft, running, isBreak])
+
+  // Save active task
+  useEffect(() => {
+    if (!mountedRef.current) return
+    if (activeTask) {
+      localStorage.setItem('activeTask', JSON.stringify(activeTask))
+    } else {
+      localStorage.removeItem('activeTask')
+    }
+  }, [activeTask])
+
+  useEffect(() => {
+    if (running && shouldAutoStart.current) {
+      shouldAutoStart.current = false
+      intervalRef.current = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(intervalRef.current)
+            timerFinishedRef.current = true
+            setRunning(false)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+  }, [running])
+
+  useEffect(() => {
+    if (!running && timerFinishedRef.current) {
+      timerFinishedRef.current = false
+      if (!isBreakRef.current) {
+        saveSession(workMinutesRef.current)
+        setIsBreak(true)
+        isBreakRef.current = true
+        setTimeLeft(breakMinutesRef.current * 60)
+      } else {
+        setIsBreak(false)
+        isBreakRef.current = false
+        setTimeLeft(workMinutesRef.current * 60)
+      }
+    }
+  }, [running])
 
   useEffect(() => {
     const getUser = async () => {
@@ -52,7 +155,15 @@ export default function Dashboard() {
         fetchUnitData(user.id)
       }
     }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        router.push('/login')
+      }
+    })
+
     getUser()
+    return () => subscription.unsubscribe()
   }, [])
 
   const fetchWeeklyMinutes = async (userId) => {
@@ -129,27 +240,26 @@ export default function Dashboard() {
   }
 
   const fetchUnitData = async (userId) => {
-  const oneWeekAgo = new Date()
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-  const { data } = await supabase
-    .from('study_sessions')
-    .select('unit, duration_minutes')
-    .eq('user_id', userId)
-    .gte('created_at', oneWeekAgo.toISOString())
-
-  if (data) {
-    const totals = {}
-    data.forEach((s) => {
-      const key = s.unit || 'Untagged'
-      totals[key] = (totals[key] || 0) + s.duration_minutes
-    })
-    const formatted = Object.entries(totals).map(([unit, minutes]) => ({
-      unit,
-      hours: parseFloat((minutes / 60).toFixed(1))
-    }))
-    setUnitData(formatted)
+    const oneWeekAgo = new Date()
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+    const { data } = await supabase
+      .from('study_sessions')
+      .select('unit, duration_minutes')
+      .eq('user_id', userId)
+      .gte('created_at', oneWeekAgo.toISOString())
+    if (data) {
+      const totals = {}
+      data.forEach((s) => {
+        const key = s.unit || 'Untagged'
+        totals[key] = (totals[key] || 0) + s.duration_minutes
+      })
+      const formatted = Object.entries(totals).map(([unit, minutes]) => ({
+        unit,
+        minutes
+      }))
+      setUnitData(formatted)
+    }
   }
-}
 
   const fetchTasks = async (userId) => {
     const { data } = await supabase
@@ -165,7 +275,7 @@ export default function Dashboard() {
     if (!newTaskTitle.trim()) return
     const { data } = await supabase
       .from('tasks')
-      .insert({ user_id: user.id, title: newTaskTitle.trim(), unit: newTaskUnit.trim() || null })
+      .insert({ user_id: user.id, title: newTaskTitle.trim(), unit: newTaskUnit || null })
       .select()
       .single()
     if (data) {
@@ -177,11 +287,15 @@ export default function Dashboard() {
 
   const completeTask = async (taskId) => {
     await supabase.from('tasks').update({ completed: true }).eq('id', taskId)
-    if (activeTask?.id === taskId) setActiveTask(null)
+    if (activeTask?.id === taskId) {
+      setActiveTask(null)
+      localStorage.removeItem('activeTask')
+    }
     setTasks(tasks.filter((t) => t.id !== taskId))
   }
 
   const saveSession = async (minutes) => {
+    if (!user) return
     await supabase.from('study_sessions').insert({
       user_id: user.id,
       duration_minutes: minutes,
@@ -200,16 +314,9 @@ export default function Dashboard() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(intervalRef.current)
+          timerFinishedRef.current = true
           setRunning(false)
-          if (!isBreak) {
-            saveSession(workMinutes)
-            setIsBreak(true)
-            setTimeLeft(breakMinutes * 60)
-          } else {
-            setIsBreak(false)
-            setTimeLeft(workMinutes * 60)
-          }
-          return prev
+          return 0
         }
         return prev - 1
       })
@@ -231,6 +338,8 @@ export default function Dashboard() {
     setWorkMinutes(w); setBreakMinutes(b); setTimeLeft(w * 60)
     setIsBreak(false); clearInterval(intervalRef.current)
     setRunning(false); setShowSettings(false)
+    localStorage.setItem('workMinutes', w)
+    localStorage.setItem('breakMinutes', b)
   }
 
   const handleUniChange = (uni) => { setSelectedUni(uni); fetchLeaderboard(uni, leaderboardView) }
@@ -244,8 +353,6 @@ export default function Dashboard() {
   const hours = Math.floor(weeklyMinutes / 60)
   const mins = weeklyMinutes % 60
 
-
-  {/* Settings */}  
   return (
     <div style={{ maxWidth: '520px', margin: '80px auto', padding: '0 20px' }}>
 
@@ -392,25 +499,15 @@ export default function Dashboard() {
           <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444', marginBottom: '24px' }}>This Week by Unit</p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={unitData} barSize={32}>
-              <XAxis
-                dataKey="unit"
-                tick={{ fill: '#444', fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fill: '#444', fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                unit="h"
-              />
+              <XAxis dataKey="unit" tick={{ fill: '#444', fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: '#444', fontSize: 11 }} axisLine={false} tickLine={false} unit="m" />
               <Tooltip
                 contentStyle={{ background: '#111', border: '1px solid #222', borderRadius: 0 }}
                 labelStyle={{ color: '#fff', fontSize: 11 }}
                 itemStyle={{ color: '#888', fontSize: 11 }}
-                formatter={(value) => [`${value}h`, 'Hours']}
+                formatter={(value) => [`${value}m`, 'Minutes']}
               />
-              <Bar dataKey="hours" radius={0}>
+              <Bar dataKey="minutes" radius={0}>
                 {unitData.map((entry, index) => {
                   const colors = ['#ffffff', '#888888', '#555555', '#333333', '#222222']
                   return <Cell key={entry.unit} fill={colors[index % colors.length]} />
@@ -418,14 +515,13 @@ export default function Dashboard() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '16px' }}>
             {unitData.map((entry, index) => {
               const colors = ['#ffffff', '#888888', '#555555', '#333333', '#222222']
               return (
                 <div key={entry.unit} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <div style={{ width: '8px', height: '8px', background: colors[index % colors.length] }} />
-                  <span style={{ fontSize: '11px', color: '#444' }}>{entry.unit} — {entry.hours}h</span>
+                  <span style={{ fontSize: '11px', color: '#444' }}>{entry.unit} — {entry.minutes}m</span>
                 </div>
               )
             })}
