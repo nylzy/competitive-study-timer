@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "UniGrind",
+  title: "Uni-Grind",
   description: "Competitive study tracker for Australian university students",
 };
 
