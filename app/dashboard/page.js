@@ -121,6 +121,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!running && timerFinishedRef.current) {
       timerFinishedRef.current = false
+      playBeep()
       if (!isBreakRef.current) {
         saveSession(workMinutesRef.current)
         setIsBreak(true)
@@ -348,6 +349,20 @@ export default function Dashboard() {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0')
     const s = (seconds % 60).toString().padStart(2, '0')
     return `${m}:${s}`
+  }
+
+  const playBeep = () => {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const oscillator = ctx.createOscillator()
+    const gain = ctx.createGain()
+    oscillator.connect(gain)
+    gain.connect(ctx.destination)
+    oscillator.frequency.value = 880
+    oscillator.type = 'sine'
+    gain.gain.setValueAtTime(0.5, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1)
+    oscillator.start(ctx.currentTime)
+    oscillator.stop(ctx.currentTime + 1)
   }
 
   const hours = Math.floor(weeklyMinutes / 60)
