@@ -108,14 +108,14 @@ export default function Setup() {
 
       <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>First name</p>
       <input
-        type="text" placeholder="e.g. Tom" value={firstName}
+        type="text" placeholder="e.g. Alan" value={firstName}
         onChange={(e) => setFirstName(e.target.value)}
         style={{ marginBottom: '12px' }}
       />
 
       <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>Last initial</p>
       <input
-        type="text" placeholder="e.g. N" value={lastInitial}
+        type="text" placeholder="e.g. T" value={lastInitial}
         onChange={(e) => setLastInitial(e.target.value.slice(0, 1))}
         maxLength={1} style={{ marginBottom: '12px' }}
       />
