@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [newTaskUnit, setNewTaskUnit] = useState('')
   const [unitData, setUnitData] = useState([])
+  const [userRank, setUserRank] = useState(null)
   const intervalRef = useRef(null)
   const isBreakRef = useRef(false)
   const workMinutesRef = useRef(25)
@@ -148,9 +149,8 @@ export default function Dashboard() {
           .eq('id', user.id)
           .single()
         setProfile(profileData)
-        if (profileData?.university) setSelectedUni(profileData.university)
         fetchWeeklyMinutes(user.id)
-        fetchLeaderboard(profileData?.university || 'All')
+        fetchLeaderboard('All', 'weekly', user.id)
         fetchStreak(user.id)
         fetchTasks(user.id)
         fetchUnitData(user.id)
@@ -181,7 +181,7 @@ export default function Dashboard() {
     }
   }
 
-  const fetchLeaderboard = async (uniFilter, view = 'weekly') => {
+  const fetchLeaderboard = async (uniFilter, view = 'weekly', currentUserId = null) => {
     let query = supabase
       .from('study_sessions')
       .select('user_id, duration_minutes')
@@ -213,8 +213,11 @@ export default function Dashboard() {
         }))
         .filter((entry) => uniFilter === 'All' || entry.university === uniFilter)
         .sort((a, b) => b.minutes - a.minutes)
-        .slice(0, 10)
-      setLeaderboard(sorted)
+
+      const rank = sorted.findIndex(e => e.user_id === (currentUserId || user?.id))
+      setUserRank(rank >= 0 ? rank + 1 : null)
+
+      setLeaderboard(sorted.slice(0, 10))
     }
   }
 
@@ -599,6 +602,27 @@ export default function Dashboard() {
             </div>
           )
         })}
+
+      {userRank && userRank > 10 && (() => {
+          const me = leaderboard.find(e => e.user_id === user?.id)
+          const h = me ? Math.floor(me.minutes / 60) : 0
+          const m = me ? me.minutes % 60 : 0
+          return (
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '14px 0', borderTop: '1px solid #222', marginTop: '8px',
+              borderLeft: '2px solid #fff', paddingLeft: '12px'
+            }}>
+              <div>
+                <span style={{ fontSize: '13px', color: '#fff' }}>
+                  <span style={{ color: '#333', marginRight: '12px' }}>#{userRank}</span>
+                  You
+                </span>
+              </div>
+              <span style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>{h}h {m}m</span>
+            </div>
+          )
+        })()}
       </div>
 
     </div>
