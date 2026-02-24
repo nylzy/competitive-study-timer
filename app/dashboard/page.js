@@ -441,7 +441,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ background: t.bg, minHeight: '100vh', color: t.text }}>
-    <div style={{ maxWidth: '520px', margin: '0 auto', padding: '80px 20px' }}>
+    <div style={{ maxWidth: '680px', margin: '0 auto', padding: '80px 40px' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '60px' }}>
@@ -525,7 +525,7 @@ export default function Dashboard() {
         <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: t.textMuted, marginBottom: '16px' }}>
           {isBreak ? 'Break' : 'Focus'}
         </p>
-        <div style={{ fontSize: '96px', fontWeight: '700', letterSpacing: '-2px', lineHeight: 1, color: t.text }}>
+        <div style={{ fontSize: 'clamp(80px, 16vw, 140px)', fontWeight: '700', letterSpacing: '-2px', lineHeight: 1, color: t.text }}>
           {formatTime(timeLeft)}
         </div>
         <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'center', gap: '12px' }}>
@@ -602,11 +602,11 @@ export default function Dashboard() {
       <div style={{ marginBottom: '60px', borderTop: `1px solid ${t.border}`, paddingTop: '40px', display: 'flex', gap: '60px' }}>
         <div>
           <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: t.textMuted, marginBottom: '8px' }}>This Week</p>
-          <p style={{ fontSize: '48px', fontWeight: '700', color: t.text }}>{hours}h {mins}m</p>
+          <p style={{ fontSize: 'clamp(36px, 6vw, 64px)', fontWeight: '700', color: t.text }}>{hours}h {mins}m</p>
         </div>
         <div>
           <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: t.textMuted, marginBottom: '8px' }}>Streak</p>
-          <p style={{ fontSize: '48px', fontWeight: '700', color: t.text }}>{streak} <span style={{ fontSize: '20px', color: t.textMuted, fontWeight: '400' }}>{streak === 1 ? 'day' : 'days'}</span></p>
+          <p style={{ fontSize: 'clamp(36px, 6vw, 64px)', fontWeight: '700', color: t.text }}>{streak} <span style={{ fontSize: '20px', color: t.textMuted, fontWeight: '400' }}>{streak === 1 ? 'day' : 'days'}</span></p>
         </div>
       </div>
 
