@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
-
-const UNIVERSITIES = ['UWA', 'Curtin', 'Murdoch', 'ECU', 'Notre Dame', 'Other']
+import universities from '../../lib/universities.json'
 
 const MAJORS = [
   'Accounting', 'Actuarial Science', 'Anatomy', 'Biochemistry', 'Biology',
@@ -19,12 +18,16 @@ const MAJORS = [
 export default function Profile() {
   const [user, setUser] = useState(null)
   const [university, setUniversity] = useState('')
+  const [uniSearch, setUniSearch] = useState('')
+  const [uniResults, setUniResults] = useState([])
+  const [showUniDropdown, setShowUniDropdown] = useState(false)
   const [major1, setMajor1] = useState('')
   const [major2, setMajor2] = useState('')
   const [units, setUnits] = useState([])
   const [newUnit, setNewUnit] = useState('')
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
+  const uniRef = useRef(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -39,6 +42,7 @@ export default function Profile() {
         .single()
       if (data) {
         setUniversity(data.university || '')
+        setUniSearch(data.university || '')
         setMajor1(data.major1 || '')
         setMajor2(data.major2 || '')
         setUnits(data.units || [])
@@ -47,6 +51,42 @@ export default function Profile() {
     getUser()
   }, [])
 
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (uniRef.current && !uniRef.current.contains(e.target)) {
+        setShowUniDropdown(false)
+        if (!university) setUniSearch('')
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [university])
+
+  const searchUniversities = async (query) => {
+  if (query.length < 2) {
+    setUniResults([])
+    return
+  }
+
+  const res = await fetch(`/api/universities?q=${query}`)
+  const data = await res.json()
+  setUniResults(data)
+}
+
+  const handleUniInput = (val) => {
+    setUniSearch(val)
+    setUniversity('')
+    setShowUniDropdown(true)
+    searchUniversities(val)
+  }
+
+  const selectUni = (name) => {
+    setUniversity(name)
+    setUniSearch(name)
+    setShowUniDropdown(false)
+    setUniResults([])
+  }
+
   const addUnit = () => {
     if (!newUnit.trim()) return
     if (units.includes(newUnit.trim())) return
@@ -54,11 +94,13 @@ export default function Profile() {
     setNewUnit('')
   }
 
-  const removeUnit = (unit) => {
-    setUnits(units.filter((u) => u !== unit))
-  }
+  const removeUnit = (unit) => setUnits(units.filter((u) => u !== unit))
 
   const handleSave = async () => {
+    if (!university) {
+      setError('Please select your university from the list.')
+      return
+    }
     const { error } = await supabase
       .from('profiles')
       .update({ university, major1, major2: major2 || null, units })
@@ -91,7 +133,7 @@ export default function Profile() {
         </div>
         <button
           onClick={() => router.push('/dashboard')}
-          style={{ background: 'transparent', color: '#444', border: '1px solid #222', fontSize: '11px', padding: '6px 14px' }}
+          style={{ background: 'transparent', color: '#444', border: '1px solid #222', fontSize: '11px', padding: '6px 14px', cursor: 'pointer' }}
         >
           Dashboard
         </button>
@@ -100,10 +142,31 @@ export default function Profile() {
       {error && <p style={{ fontSize: '12px', color: '#ff4444', marginBottom: '16px' }}>{error}</p>}
 
       <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>University</p>
-      <select value={university} onChange={(e) => setUniversity(e.target.value)} style={selectStyle}>
-        <option value="" disabled>Select university</option>
-        {UNIVERSITIES.map((u) => <option key={u} value={u}>{u}</option>)}
-      </select>
+      <div ref={uniRef} style={{ position: 'relative', marginBottom: '12px' }}>
+        <input
+          type="text"
+          placeholder="Search your university..."
+          value={uniSearch}
+          onChange={(e) => handleUniInput(e.target.value)}
+          onFocus={() => uniSearch.length >= 2 && setShowUniDropdown(true)}
+          style={{ width: '100%', padding: '12px', background: '#111', border: `1px solid ${university ? '#555' : '#222'}`, color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+        />
+        {showUniDropdown && uniResults.length > 0 && (
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#111', border: '1px solid #222', borderTop: 'none', zIndex: 10, maxHeight: '240px', overflowY: 'auto' }}>
+            {uniResults.map((name) => (
+              <div
+                key={name}
+                onClick={() => selectUni(name)}
+                style={{ padding: '10px 12px', fontSize: '13px', color: '#888', cursor: 'pointer', borderBottom: '1px solid #1a1a1a' }}
+                onMouseEnter={(e) => e.target.style.color = '#fff'}
+                onMouseLeave={(e) => e.target.style.color = '#888'}
+              >
+                {name}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>Major</p>
       <select value={major1} onChange={(e) => setMajor1(e.target.value)} style={selectStyle}>
@@ -126,7 +189,7 @@ export default function Profile() {
           onKeyDown={(e) => e.key === 'Enter' && addUnit()}
           style={{ flex: 1, padding: '8px', background: '#111', border: '1px solid #222', color: '#fff', fontSize: '13px', outline: 'none' }}
         />
-        <button onClick={addUnit} style={{ padding: '8px 16px' }}>Add</button>
+        <button onClick={addUnit} style={{ padding: '8px 16px', cursor: 'pointer' }}>Add</button>
       </div>
 
       {units.length > 0 && (
@@ -140,10 +203,10 @@ export default function Profile() {
         </div>
       )}
 
-      <button onClick={handleSave} style={{ marginRight: '12px' }}>
+      <button onClick={handleSave} style={{ marginRight: '12px', cursor: 'pointer' }}>
         {saved ? 'Saved!' : 'Save changes'}
       </button>
-      <button onClick={handleLogout} style={{ background: 'transparent', color: '#444', border: '1px solid #222' }}>
+      <button onClick={handleLogout} style={{ background: 'transparent', color: '#444', border: '1px solid #222', cursor: 'pointer' }}>
         Log out
       </button>
     </div>

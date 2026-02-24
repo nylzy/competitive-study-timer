@@ -5,7 +5,6 @@ import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
-const UNIVERSITIES = ['All', 'UWA', 'Curtin', 'Murdoch', 'ECU', 'Notre Dame', 'Other']
 
 const THEMES = {
   dark: {
@@ -274,7 +273,7 @@ export default function Dashboard() {
 
       const rank = sorted.findIndex(e => e.user_id === (currentUserId || user?.id))
       setUserRank(rank >= 0 ? rank + 1 : null)
-      setLeaderboard(sorted.slice(0, 10))
+      setLeaderboard(sorted.slice(0, 5))
     }
   }
 
@@ -658,10 +657,16 @@ export default function Dashboard() {
               >All-time</button>
             </div>
           </div>
-          <select value={selectedUni} onChange={(e) => handleUniChange(e.target.value)}
-            style={{ background: t.selectBg, border: `1px solid ${t.inputBorder}`, color: t.selectColor, fontSize: '11px', padding: '6px 10px', outline: 'none' }}>
-            {UNIVERSITIES.map((u) => (<option key={u} value={u}>{u}</option>))}
-          </select>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => handleUniChange('All')}
+              style={{ background: selectedUni === 'All' ? t.accent : 'transparent', color: selectedUni === 'All' ? t.accentText : t.textMuted, border: `1px solid ${t.inputBorder}`, fontSize: '10px', padding: '4px 10px', cursor: 'pointer' }}
+            >All</button>
+            <button
+              onClick={() => handleUniChange(profile?.university || 'All')}
+              style={{ background: selectedUni !== 'All' ? t.accent : 'transparent', color: selectedUni !== 'All' ? t.accentText : t.textMuted, border: `1px solid ${t.inputBorder}`, fontSize: '10px', padding: '4px 10px', cursor: 'pointer' }}
+            >{profile?.university || 'My Uni'}</button>
+          </div>
         </div>
 
         {leaderboard.length === 0 && (
@@ -693,7 +698,7 @@ export default function Dashboard() {
           )
         })}
 
-        {userRank && userRank > 10 && (() => {
+        {userRank && userRank > 5 && (() => {
           const me = leaderboard.find(e => e.user_id === user?.id)
           const h = me ? Math.floor(me.minutes / 60) : 0
           const m = me ? me.minutes % 60 : 0

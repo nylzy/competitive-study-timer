@@ -61,7 +61,7 @@ export default function Landing() {
 
       {/* Hero */}
       <div style={{ maxWidth: '640px', margin: '0 auto', padding: '80px 20px 100px' }}>
-        <p style={{ fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#444', marginBottom: '24px' }}>For Australian university students</p>
+        <p style={{ fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#444', marginBottom: '24px' }}>For ambitious university students</p>
         <h2 style={{ fontSize: '48px', fontWeight: '700', lineHeight: 1.1, letterSpacing: '-1px', marginBottom: '24px' }}>
           Study harder.<br />Prove it.
         </h2>
@@ -120,7 +120,7 @@ export default function Landing() {
       <div style={{ borderTop: '1px solid #111', padding: '80px 0' }}>
         <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 20px' }}>
           <p style={{ fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#444', marginBottom: '8px' }}>Leaderboard</p>
-          <p style={{ fontSize: '14px', color: '#555', marginBottom: '40px' }}>This week's top students across Australia.</p>
+          <p style={{ fontSize: '14px', color: '#555', marginBottom: '40px' }}>This week's top students across the world.</p>
           {topStudents.length === 0 ? (
             <p style={{ fontSize: '12px', color: '#333' }}>No study sessions this week yet — be the first.</p>
           ) : topStudents.map((entry, index) => {
@@ -164,7 +164,7 @@ export default function Landing() {
 
       {/* Footer */}
       <div style={{ borderTop: '1px solid #111', padding: '32px 20px', textAlign: 'center' }}>
-        <p style={{ fontSize: '11px', color: '#333' }}>Uni-Grind · Built for Australian students</p>
+        <p style={{ fontSize: '11px', color: '#333' }}>Uni-Grind · Built for ambitious students.</p>
       </div>
 
     </div>
