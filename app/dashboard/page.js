@@ -7,6 +7,57 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 
 const UNIVERSITIES = ['All', 'UWA', 'Curtin', 'Murdoch', 'ECU', 'Notre Dame', 'Other']
 
+const THEMES = {
+  dark: {
+    bg: '#0a0a0a',
+    surface: '#111',
+    border: '#1a1a1a',
+    borderSubtle: '#111',
+    text: '#fff',
+    textMuted: '#444',
+    textDim: '#666',
+    textFaint: '#333',
+    inputBg: '#111',
+    inputBorder: '#222',
+    accent: '#fff',
+    accentText: '#000',
+    selectBg: '#111',
+    selectColor: '#888',
+  },
+  light: {
+    bg: '#f5f5f5',
+    surface: '#e8e8e8',
+    border: '#ddd',
+    borderSubtle: '#e0e0e0',
+    text: '#111',
+    textMuted: '#888',
+    textDim: '#555',
+    textFaint: '#aaa',
+    inputBg: '#e8e8e8',
+    inputBorder: '#ccc',
+    accent: '#111',
+    accentText: '#fff',
+    selectBg: '#e8e8e8',
+    selectColor: '#555',
+  },
+  warm: {
+    bg: '#f5f0e8',
+    surface: '#ede5d8',
+    border: '#d4c9b8',
+    borderSubtle: '#e0d8cc',
+    text: '#2c2416',
+    textMuted: '#8a7a66',
+    textDim: '#6b5c48',
+    textFaint: '#b0a090',
+    inputBg: '#ede5d8',
+    inputBorder: '#c8bba8',
+    accent: '#2c2416',
+    accentText: '#f5f0e8',
+    selectBg: '#ede5d8',
+    selectColor: '#6b5c48',
+  },
+}
+
 export default function Dashboard() {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -29,6 +80,8 @@ export default function Dashboard() {
   const [newTaskUnit, setNewTaskUnit] = useState('')
   const [unitData, setUnitData] = useState([])
   const [userRank, setUserRank] = useState(null)
+  const [theme, setTheme] = useState('dark')
+  const [accentColor, setAccentColor] = useState('#7c6aff')
   const intervalRef = useRef(null)
   const isBreakRef = useRef(false)
   const workMinutesRef = useRef(25)
@@ -37,6 +90,17 @@ export default function Dashboard() {
   const shouldAutoStart = useRef(false)
   const timerFinishedRef = useRef(false)
   const router = useRouter()
+
+  const t = theme === 'colour'
+    ? { ...THEMES.dark, accent: accentColor, accentText: '#fff' }
+    : THEMES[theme] || THEMES.dark
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'dark'
+    const savedAccent = localStorage.getItem('accentColor') || '#7c6aff'
+    setTheme(savedTheme)
+    setAccentColor(savedAccent)
+  }, [])
 
   useEffect(() => {
     const savedWork = parseInt(localStorage.getItem('workMinutes')) || 25
@@ -77,7 +141,6 @@ export default function Dashboard() {
     }
   }, [])
 
-  // Save timer state on every tick
   useEffect(() => {
     isBreakRef.current = isBreak
     workMinutesRef.current = workMinutes
@@ -92,7 +155,6 @@ export default function Dashboard() {
     localStorage.setItem('timerSavedAt', Date.now())
   }, [timeLeft, running, isBreak])
 
-  // Save active task
   useEffect(() => {
     if (!mountedRef.current) return
     if (activeTask) {
@@ -157,10 +219,8 @@ export default function Dashboard() {
       }
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT') {
-        router.push('/login')
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') router.push('/login')
     })
 
     getUser()
@@ -182,9 +242,7 @@ export default function Dashboard() {
   }
 
   const fetchLeaderboard = async (uniFilter, view = 'weekly', currentUserId = null) => {
-    let query = supabase
-      .from('study_sessions')
-      .select('user_id, duration_minutes')
+    let query = supabase.from('study_sessions').select('user_id, duration_minutes')
     if (view === 'weekly') {
       const oneWeekAgo = new Date()
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
@@ -216,7 +274,6 @@ export default function Dashboard() {
 
       const rank = sorted.findIndex(e => e.user_id === (currentUserId || user?.id))
       setUserRank(rank >= 0 ? rank + 1 : null)
-
       setLeaderboard(sorted.slice(0, 10))
     }
   }
@@ -257,10 +314,7 @@ export default function Dashboard() {
         const key = s.unit || 'Untagged'
         totals[key] = (totals[key] || 0) + s.duration_minutes
       })
-      const formatted = Object.entries(totals).map(([unit, minutes]) => ({
-        unit,
-        minutes
-      }))
+      const formatted = Object.entries(totals).map(([unit, minutes]) => ({ unit, minutes }))
       setUnitData(formatted)
     }
   }
@@ -346,6 +400,16 @@ export default function Dashboard() {
     localStorage.setItem('breakMinutes', b)
   }
 
+  const handleThemeChange = (newTheme) => {
+    setTheme(newTheme)
+    localStorage.setItem('theme', newTheme)
+  }
+
+  const handleAccentChange = (color) => {
+    setAccentColor(color)
+    localStorage.setItem('accentColor', color)
+  }
+
   const handleUniChange = (uni) => { setSelectedUni(uni); fetchLeaderboard(uni, leaderboardView) }
 
   const formatTime = (seconds) => {
@@ -371,211 +435,237 @@ export default function Dashboard() {
   const hours = Math.floor(weeklyMinutes / 60)
   const mins = weeklyMinutes % 60
 
-  return (
-    <div style={{ maxWidth: '520px', margin: '80px auto', padding: '0 20px' }}>
+  const barColors = theme === 'light' || theme === 'warm'
+    ? [t.text, t.textMuted, t.textDim, t.textFaint, t.border]
+    : ['#ffffff', '#888888', '#555555', '#333333', '#222222']
 
+  return (
+    <div style={{ background: t.bg, minHeight: '100vh', color: t.text }}>
+    <div style={{ maxWidth: '520px', margin: '0 auto', padding: '80px 20px' }}>
+
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '60px' }}>
         <div>
-          <h1 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Uni-Grind</h1>
-          <p style={{ fontSize: '12px', color: '#444', marginTop: '4px' }}>
+          <h1 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.15em', textTransform: 'uppercase', color: t.text }}>Uni-Grind</h1>
+          <p style={{ fontSize: '12px', color: t.textMuted, marginTop: '4px' }}>
             {profile?.display_name} · {profile?.university} · {profile?.major1}{profile?.major2 ? ` & ${profile?.major2}` : ''}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={() => router.push('/profile')}
-            style={{ background: 'transparent', color: '#444', border: '1px solid #222', fontSize: '11px', letterSpacing: '0.1em', padding: '6px 14px' }}
-          >
-            Profile
-          </button>
+            style={{ background: 'transparent', color: t.textMuted, border: `1px solid ${t.inputBorder}`, fontSize: '11px', letterSpacing: '0.1em', padding: '6px 14px', cursor: 'pointer' }}
+          >Profile</button>
           <button
             onClick={() => { setTempWork(workMinutes); setTempBreak(breakMinutes); setShowSettings(!showSettings) }}
-            style={{ background: 'transparent', color: '#444', border: '1px solid #222', fontSize: '11px', letterSpacing: '0.1em', padding: '6px 14px' }}
-          >
-            Settings
-          </button>
+            style={{ background: 'transparent', color: t.textMuted, border: `1px solid ${t.inputBorder}`, fontSize: '11px', letterSpacing: '0.1em', padding: '6px 14px', cursor: 'pointer' }}
+          >Settings</button>
         </div>
       </div>
 
+      {/* Settings */}
       {showSettings && (
-        <div style={{ marginBottom: '48px', padding: '24px', border: '1px solid #1a1a1a' }}>
-          <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444', marginBottom: '20px' }}>Timer Settings</p>
+        <div style={{ marginBottom: '48px', padding: '24px', border: `1px solid ${t.border}`, background: t.surface }}>
+          <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: t.textMuted, marginBottom: '20px' }}>Timer Settings</p>
           <div style={{ display: 'flex', gap: '24px', marginBottom: '20px' }}>
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>Work (minutes)</p>
-              <input type="number" value={tempWork} onChange={(e) => setTempWork(e.target.value)} min="1" max="120" />
+              <p style={{ fontSize: '11px', color: t.textMuted, marginBottom: '8px' }}>Work (minutes)</p>
+              <input type="number" value={tempWork} onChange={(e) => setTempWork(e.target.value)} min="1" max="120"
+                style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text, padding: '8px', width: '100%', outline: 'none' }} />
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>Break (minutes)</p>
-              <input type="number" value={tempBreak} onChange={(e) => setTempBreak(e.target.value)} min="1" max="60" />
+              <p style={{ fontSize: '11px', color: t.textMuted, marginBottom: '8px' }}>Break (minutes)</p>
+              <input type="number" value={tempBreak} onChange={(e) => setTempBreak(e.target.value)} min="1" max="60"
+                style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text, padding: '8px', width: '100%', outline: 'none' }} />
             </div>
           </div>
-          <button onClick={saveSettings}>Save</button>
+          <button onClick={saveSettings}
+            style={{ background: t.accent, color: t.accentText, border: 'none', padding: '8px 20px', fontSize: '12px', cursor: 'pointer', marginBottom: '24px' }}>
+            Save
+          </button>
+
+          <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: t.textMuted, marginBottom: '16px', marginTop: '8px' }}>Theme</p>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {['dark', 'light', 'warm', 'colour'].map((th) => (
+              <button
+                key={th}
+                onClick={() => handleThemeChange(th)}
+                style={{
+                  background: theme === th ? t.accent : 'transparent',
+                  color: theme === th ? t.accentText : t.textMuted,
+                  border: `1px solid ${t.inputBorder}`,
+                  fontSize: '11px', letterSpacing: '0.1em', padding: '6px 14px',
+                  cursor: 'pointer', textTransform: 'capitalize'
+                }}
+              >{th}</button>
+            ))}
+          </div>
+          {theme === 'colour' && (
+            <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <p style={{ fontSize: '11px', color: t.textMuted }}>Accent colour</p>
+              <input
+                type="color"
+                value={accentColor}
+                onChange={(e) => handleAccentChange(e.target.value)}
+                style={{ width: '40px', height: '28px', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
+              />
+              <span style={{ fontSize: '11px', color: t.textMuted }}>{accentColor}</span>
+            </div>
+          )}
         </div>
       )}
 
       {/* Timer */}
-      <div style={{ textAlign: 'center', marginBottom: '60px', borderTop: '1px solid #1a1a1a', paddingTop: '40px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '60px', borderTop: `1px solid ${t.border}`, paddingTop: '40px' }}>
         {activeTask && (
-          <p style={{ fontSize: '11px', color: '#444', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>
+          <p style={{ fontSize: '11px', color: t.textMuted, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>
             {activeTask.unit ? `${activeTask.unit} · ` : ''}{activeTask.title}
           </p>
         )}
-        <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444', marginBottom: '16px' }}>
+        <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: t.textMuted, marginBottom: '16px' }}>
           {isBreak ? 'Break' : 'Focus'}
         </p>
-        <div style={{ fontSize: '96px', fontWeight: '700', letterSpacing: '-2px', lineHeight: 1 }}>
+        <div style={{ fontSize: '96px', fontWeight: '700', letterSpacing: '-2px', lineHeight: 1, color: t.text }}>
           {formatTime(timeLeft)}
         </div>
         <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'center', gap: '12px' }}>
           {!running ? (
-            <button onClick={startTimer}>Start</button>
+            <button onClick={startTimer}
+              style={{ background: t.accent, color: t.accentText, border: 'none', padding: '10px 28px', fontSize: '13px', cursor: 'pointer' }}>
+              Start
+            </button>
           ) : (
-            <button onClick={pauseTimer}>Pause</button>
+            <button onClick={pauseTimer}
+              style={{ background: t.accent, color: t.accentText, border: 'none', padding: '10px 28px', fontSize: '13px', cursor: 'pointer' }}>
+              Pause
+            </button>
           )}
-          <button onClick={resetTimer} style={{ background: '#111', color: '#fff', border: '1px solid #222' }}>Reset</button>
+          <button onClick={resetTimer}
+            style={{ background: 'transparent', color: t.textMuted, border: `1px solid ${t.inputBorder}`, padding: '10px 28px', fontSize: '13px', cursor: 'pointer' }}>
+            Reset
+          </button>
         </div>
       </div>
 
       {/* Tasks */}
-      <div style={{ marginBottom: '60px', borderTop: '1px solid #1a1a1a', paddingTop: '40px' }}>
-        <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444', marginBottom: '24px' }}>Tasks</p>
+      <div style={{ marginBottom: '60px', borderTop: `1px solid ${t.border}`, paddingTop: '40px' }}>
+        <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: t.textMuted, marginBottom: '24px' }}>Tasks</p>
 
         {activeTask && (
-          <div style={{ marginBottom: '16px', padding: '12px', border: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ marginBottom: '16px', padding: '12px', border: `1px solid ${t.inputBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: t.surface }}>
             <div>
-              <p style={{ fontSize: '12px', color: '#fff' }}>{activeTask.title}</p>
-              {activeTask.unit && <p style={{ fontSize: '11px', color: '#444', marginTop: '2px' }}>{activeTask.unit}</p>}
+              <p style={{ fontSize: '12px', color: t.text }}>{activeTask.title}</p>
+              {activeTask.unit && <p style={{ fontSize: '11px', color: t.textMuted, marginTop: '2px' }}>{activeTask.unit}</p>}
             </div>
-            <p style={{ fontSize: '10px', color: '#555', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Active</p>
+            <p style={{ fontSize: '10px', color: t.textDim, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Active</p>
           </div>
         )}
 
         {tasks.length === 0 && !activeTask && (
-          <p style={{ fontSize: '12px', color: '#333', marginBottom: '16px' }}>No tasks yet.</p>
+          <p style={{ fontSize: '12px', color: t.textFaint, marginBottom: '16px' }}>No tasks yet.</p>
         )}
 
         {tasks.map((task) => (
           <div key={task.id} style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '12px 0', borderBottom: '1px solid #111'
+            padding: '12px 0', borderBottom: `1px solid ${t.borderSubtle}`
           }}>
-            <div
-              onClick={() => setActiveTask(activeTask?.id === task.id ? null : task)}
-              style={{ cursor: 'pointer', flex: 1 }}
-            >
-              <p style={{ fontSize: '13px', color: activeTask?.id === task.id ? '#fff' : '#666' }}>{task.title}</p>
-              {task.unit && <p style={{ fontSize: '11px', color: '#333', marginTop: '2px' }}>{task.unit}</p>}
+            <div onClick={() => setActiveTask(activeTask?.id === task.id ? null : task)} style={{ cursor: 'pointer', flex: 1 }}>
+              <p style={{ fontSize: '13px', color: activeTask?.id === task.id ? t.text : t.textDim }}>{task.title}</p>
+              {task.unit && <p style={{ fontSize: '11px', color: t.textFaint, marginTop: '2px' }}>{task.unit}</p>}
             </div>
-            <button
-              onClick={() => completeTask(task.id)}
-              style={{ background: 'transparent', color: '#333', border: '1px solid #222', fontSize: '10px', padding: '4px 10px', marginLeft: '12px' }}
-            >
+            <button onClick={() => completeTask(task.id)}
+              style={{ background: 'transparent', color: t.textFaint, border: `1px solid ${t.inputBorder}`, fontSize: '10px', padding: '4px 10px', marginLeft: '12px', cursor: 'pointer' }}>
               Done
             </button>
           </div>
         ))}
 
         <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-          <input
-            type="text"
-            placeholder="New task"
-            value={newTaskTitle}
+          <input type="text" placeholder="New task" value={newTaskTitle}
             onChange={(e) => setNewTaskTitle(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addTask()}
-            style={{ flex: 2, padding: '8px', background: '#111', border: '1px solid #222', color: '#fff', fontSize: '13px', outline: 'none' }}
-          />
-          <select
-            value={newTaskUnit}
-            onChange={(e) => setNewTaskUnit(e.target.value)}
-            style={{ flex: 1, padding: '8px', background: '#111', border: '1px solid #222', color: newTaskUnit ? '#fff' : '#555', fontSize: '13px', outline: 'none' }}
-          >
+            style={{ flex: 2, padding: '8px', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text, fontSize: '13px', outline: 'none' }} />
+          <select value={newTaskUnit} onChange={(e) => setNewTaskUnit(e.target.value)}
+            style={{ flex: 1, padding: '8px', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: newTaskUnit ? t.text : t.textDim, fontSize: '13px', outline: 'none' }}>
             <option value="">No unit</option>
-            {(profile?.units || []).map((u) => (
-              <option key={u} value={u}>{u}</option>
-            ))}
+            {(profile?.units || []).map((u) => (<option key={u} value={u}>{u}</option>))}
           </select>
-          <button onClick={addTask} style={{ padding: '8px 16px', whiteSpace: 'nowrap' }}>+ Add</button>
+          <button onClick={addTask}
+            style={{ padding: '8px 16px', whiteSpace: 'nowrap', background: t.accent, color: t.accentText, border: 'none', cursor: 'pointer' }}>
+            + Add
+          </button>
         </div>
       </div>
 
       {/* Stats */}
-      <div style={{ marginBottom: '60px', borderTop: '1px solid #1a1a1a', paddingTop: '40px', display: 'flex', gap: '60px' }}>
+      <div style={{ marginBottom: '60px', borderTop: `1px solid ${t.border}`, paddingTop: '40px', display: 'flex', gap: '60px' }}>
         <div>
-          <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444', marginBottom: '8px' }}>This Week</p>
-          <p style={{ fontSize: '48px', fontWeight: '700' }}>{hours}h {mins}m</p>
+          <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: t.textMuted, marginBottom: '8px' }}>This Week</p>
+          <p style={{ fontSize: '48px', fontWeight: '700', color: t.text }}>{hours}h {mins}m</p>
         </div>
         <div>
-          <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444', marginBottom: '8px' }}>Streak</p>
-          <p style={{ fontSize: '48px', fontWeight: '700' }}>{streak} <span style={{ fontSize: '20px', color: '#444', fontWeight: '400' }}>{streak === 1 ? 'day' : 'days'}</span></p>
+          <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: t.textMuted, marginBottom: '8px' }}>Streak</p>
+          <p style={{ fontSize: '48px', fontWeight: '700', color: t.text }}>{streak} <span style={{ fontSize: '20px', color: t.textMuted, fontWeight: '400' }}>{streak === 1 ? 'day' : 'days'}</span></p>
         </div>
       </div>
 
       {/* Unit Breakdown */}
       {unitData.length > 0 && (
-        <div style={{ marginBottom: '60px', borderTop: '1px solid #1a1a1a', paddingTop: '40px' }}>
-          <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444', marginBottom: '24px' }}>This Week by Unit</p>
+        <div style={{ marginBottom: '60px', borderTop: `1px solid ${t.border}`, paddingTop: '40px' }}>
+          <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: t.textMuted, marginBottom: '24px' }}>This Week by Unit</p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={unitData} barSize={32}>
-              <XAxis dataKey="unit" tick={{ fill: '#444', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#444', fontSize: 11 }} axisLine={false} tickLine={false} unit="m" />
+              <XAxis dataKey="unit" tick={{ fill: t.textMuted, fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: t.textMuted, fontSize: 11 }} axisLine={false} tickLine={false} unit="m" />
               <Tooltip
-                contentStyle={{ background: '#111', border: '1px solid #222', borderRadius: 0 }}
-                labelStyle={{ color: '#fff', fontSize: 11 }}
-                itemStyle={{ color: '#888', fontSize: 11 }}
+                contentStyle={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 0 }}
+                labelStyle={{ color: t.text, fontSize: 11 }}
+                itemStyle={{ color: t.textMuted, fontSize: 11 }}
                 formatter={(value) => [`${value}m`, 'Minutes']}
               />
               <Bar dataKey="minutes" radius={0}>
-                {unitData.map((entry, index) => {
-                  const colors = ['#ffffff', '#888888', '#555555', '#333333', '#222222']
-                  return <Cell key={entry.unit} fill={colors[index % colors.length]} />
-                })}
+                {unitData.map((entry, index) => (
+                  <Cell key={entry.unit} fill={barColors[index % barColors.length]} />
+                ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '16px' }}>
-            {unitData.map((entry, index) => {
-              const colors = ['#ffffff', '#888888', '#555555', '#333333', '#222222']
-              return (
-                <div key={entry.unit} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '8px', height: '8px', background: colors[index % colors.length] }} />
-                  <span style={{ fontSize: '11px', color: '#444' }}>{entry.unit} — {entry.minutes}m</span>
-                </div>
-              )
-            })}
+            {unitData.map((entry, index) => (
+              <div key={entry.unit} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '8px', height: '8px', background: barColors[index % barColors.length] }} />
+                <span style={{ fontSize: '11px', color: t.textMuted }}>{entry.unit} — {entry.minutes}m</span>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
       {/* Leaderboard */}
-      <div style={{ borderTop: '1px solid #1a1a1a', paddingTop: '40px' }}>
+      <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: '40px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#444' }}>Leaderboard</p>
+            <p style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: t.textMuted }}>Leaderboard</p>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 onClick={() => { setLeaderboardView('weekly'); fetchLeaderboard(selectedUni, 'weekly') }}
-                style={{ background: leaderboardView === 'weekly' ? '#fff' : 'transparent', color: leaderboardView === 'weekly' ? '#000' : '#444', border: '1px solid #222', fontSize: '10px', padding: '4px 10px', letterSpacing: '0.05em' }}
+                style={{ background: leaderboardView === 'weekly' ? t.accent : 'transparent', color: leaderboardView === 'weekly' ? t.accentText : t.textMuted, border: `1px solid ${t.inputBorder}`, fontSize: '10px', padding: '4px 10px', cursor: 'pointer' }}
               >Weekly</button>
               <button
                 onClick={() => { setLeaderboardView('alltime'); fetchLeaderboard(selectedUni, 'alltime') }}
-                style={{ background: leaderboardView === 'alltime' ? '#fff' : 'transparent', color: leaderboardView === 'alltime' ? '#000' : '#444', border: '1px solid #222', fontSize: '10px', padding: '4px 10px', letterSpacing: '0.05em' }}
+                style={{ background: leaderboardView === 'alltime' ? t.accent : 'transparent', color: leaderboardView === 'alltime' ? t.accentText : t.textMuted, border: `1px solid ${t.inputBorder}`, fontSize: '10px', padding: '4px 10px', cursor: 'pointer' }}
               >All-time</button>
             </div>
           </div>
-          <select
-            value={selectedUni}
-            onChange={(e) => handleUniChange(e.target.value)}
-            style={{ background: '#111', border: '1px solid #222', color: '#888', fontSize: '11px', padding: '6px 10px', outline: 'none', letterSpacing: '0.05em' }}
-          >
-            {UNIVERSITIES.map((u) => (
-              <option key={u} value={u}>{u}</option>
-            ))}
+          <select value={selectedUni} onChange={(e) => handleUniChange(e.target.value)}
+            style={{ background: t.selectBg, border: `1px solid ${t.inputBorder}`, color: t.selectColor, fontSize: '11px', padding: '6px 10px', outline: 'none' }}>
+            {UNIVERSITIES.map((u) => (<option key={u} value={u}>{u}</option>))}
           </select>
         </div>
 
         {leaderboard.length === 0 && (
-          <p style={{ fontSize: '12px', color: '#333' }}>No results for this university yet.</p>
+          <p style={{ fontSize: '12px', color: t.textFaint }}>No results for this university yet.</p>
         )}
 
         {leaderboard.map((entry, index) => {
@@ -585,46 +675,45 @@ export default function Dashboard() {
           return (
             <div key={entry.user_id} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '14px 0', borderBottom: '1px solid #111',
-              borderLeft: isMe ? '2px solid #fff' : '2px solid transparent',
+              padding: '14px 0', borderBottom: `1px solid ${t.borderSubtle}`,
+              borderLeft: isMe ? `2px solid ${t.accent}` : '2px solid transparent',
               paddingLeft: isMe ? '12px' : '0'
             }}>
               <div>
-                <span style={{ fontSize: '13px', color: isMe ? '#fff' : '#888' }}>
-                  <span style={{ color: '#333', marginRight: '12px' }}>#{index + 1}</span>
+                <span style={{ fontSize: '13px', color: isMe ? t.text : t.textDim }}>
+                  <span style={{ color: t.textFaint, marginRight: '12px' }}>#{index + 1}</span>
                   {isMe ? 'You' : entry.display_name}
                 </span>
-                <p style={{ fontSize: '11px', color: '#333', marginTop: '3px', paddingLeft: '24px' }}>
+                <p style={{ fontSize: '11px', color: t.textFaint, marginTop: '3px', paddingLeft: '24px' }}>
                   {entry.university}{entry.major1 ? ` · ${entry.major1}` : ''}{entry.major2 ? ` & ${entry.major2}` : ''}
                 </p>
               </div>
-              <span style={{ fontSize: '13px', fontWeight: '600', color: isMe ? '#fff' : '#555' }}>{h}h {m}m</span>
+              <span style={{ fontSize: '13px', fontWeight: '600', color: isMe ? t.text : t.textDim }}>{h}h {m}m</span>
             </div>
           )
         })}
 
-      {userRank && userRank > 10 && (() => {
+        {userRank && userRank > 10 && (() => {
           const me = leaderboard.find(e => e.user_id === user?.id)
           const h = me ? Math.floor(me.minutes / 60) : 0
           const m = me ? me.minutes % 60 : 0
           return (
             <div style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '14px 0', borderTop: '1px solid #222', marginTop: '8px',
-              borderLeft: '2px solid #fff', paddingLeft: '12px'
+              padding: '14px 0', borderTop: `1px solid ${t.border}`, marginTop: '8px',
+              borderLeft: `2px solid ${t.accent}`, paddingLeft: '12px'
             }}>
-              <div>
-                <span style={{ fontSize: '13px', color: '#fff' }}>
-                  <span style={{ color: '#333', marginRight: '12px' }}>#{userRank}</span>
-                  You
-                </span>
-              </div>
-              <span style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>{h}h {m}m</span>
+              <span style={{ fontSize: '13px', color: t.text }}>
+                <span style={{ color: t.textFaint, marginRight: '12px' }}>#{userRank}</span>
+                You
+              </span>
+              <span style={{ fontSize: '13px', fontWeight: '600', color: t.text }}>{h}h {m}m</span>
             </div>
           )
         })()}
       </div>
 
+    </div>
     </div>
   )
 }
