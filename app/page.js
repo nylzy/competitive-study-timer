@@ -1,9 +1,49 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 
 export default function Landing() {
   const router = useRouter()
+  const [topStudents, setTopStudents] = useState([])
+
+  useEffect(() => {
+    const fetchTop = async () => {
+      const oneWeekAgo = new Date()
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+      const { data: sessions } = await supabase
+        .from('study_sessions')
+        .select('user_id, duration_minutes')
+        .gte('created_at', oneWeekAgo.toISOString())
+
+      if (sessions) {
+        const totals = {}
+        sessions.forEach(s => {
+          totals[s.user_id] = (totals[s.user_id] || 0) + s.duration_minutes
+        })
+        const userIds = Object.keys(totals)
+        if (userIds.length === 0) return
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, display_name, university, major1')
+          .in('id', userIds)
+        const nameMap = {}
+        profiles?.forEach(p => { nameMap[p.id] = p })
+        const sorted = Object.entries(totals)
+          .map(([user_id, minutes]) => ({
+            user_id, minutes,
+            display_name: nameMap[user_id]?.display_name || 'Anonymous',
+            university: nameMap[user_id]?.university || '',
+            major1: nameMap[user_id]?.major1 || '',
+          }))
+          .sort((a, b) => b.minutes - a.minutes)
+          .slice(0, 5)
+        setTopStudents(sorted)
+      }
+    }
+    fetchTop()
+  }, [])
 
   return (
     <div style={{ background: '#0a0a0a', minHeight: '100vh', color: '#fff' }}>
@@ -81,30 +121,30 @@ export default function Landing() {
         <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 20px' }}>
           <p style={{ fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#444', marginBottom: '8px' }}>Leaderboard</p>
           <p style={{ fontSize: '14px', color: '#555', marginBottom: '40px' }}>This week's top students across Australia.</p>
-          {[
-            { rank: 1, name: 'Sarah K', uni: 'UWA · Computer Science', time: '18h 40m' },
-            { rank: 2, name: 'James T', uni: 'Curtin · Engineering', time: '16h 12m' },
-            { rank: 3, name: 'Mia L', uni: 'UWA · Medicine', time: '14h 55m' },
-            { rank: 4, name: 'Alex R', uni: 'Monash · Law', time: '13h 20m' },
-            { rank: 5, name: 'You?', uni: 'Sign up to claim your spot', time: '—' },
-          ].map((entry) => (
-            <div key={entry.rank} style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '14px 0', borderBottom: '1px solid #111',
-              borderLeft: entry.rank === 5 ? '2px solid #333' : '2px solid transparent',
-              paddingLeft: entry.rank === 5 ? '12px' : '0',
-              opacity: entry.rank === 5 ? 0.5 : 1
-            }}>
-              <div>
-                <span style={{ fontSize: '13px', color: entry.rank === 5 ? '#555' : '#888' }}>
-                  <span style={{ color: '#333', marginRight: '12px' }}>#{entry.rank}</span>
-                  {entry.name}
-                </span>
-                <p style={{ fontSize: '11px', color: '#333', marginTop: '3px', paddingLeft: '24px' }}>{entry.uni}</p>
+          {topStudents.length === 0 ? (
+            <p style={{ fontSize: '12px', color: '#333' }}>No study sessions this week yet — be the first.</p>
+          ) : topStudents.map((entry, index) => {
+            const h = Math.floor(entry.minutes / 60)
+            const m = entry.minutes % 60
+            return (
+              <div key={entry.user_id} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '14px 0', borderBottom: '1px solid #111',
+                borderLeft: '2px solid transparent', paddingLeft: '0'
+              }}>
+                <div>
+                  <span style={{ fontSize: '13px', color: '#888' }}>
+                    <span style={{ color: '#333', marginRight: '12px' }}>#{index + 1}</span>
+                    {entry.display_name}
+                  </span>
+                  <p style={{ fontSize: '11px', color: '#333', marginTop: '3px', paddingLeft: '24px' }}>
+                    {entry.university}{entry.major1 ? ` · ${entry.major1}` : ''}
+                  </p>
+                </div>
+                <span style={{ fontSize: '13px', fontWeight: '600', color: '#555' }}>{h}h {m}m</span>
               </div>
-              <span style={{ fontSize: '13px', fontWeight: '600', color: '#555' }}>{entry.time}</span>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
