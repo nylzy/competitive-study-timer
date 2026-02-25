@@ -25,7 +25,7 @@ export default function Landing() {
         const userIds = Object.keys(totals)
         if (userIds.length === 0) return
         const { data: profiles } = await supabase
-          .from('profiles')
+          .from('public_profiles')
           .select('id, display_name, university, major1')
           .in('id', userIds)
         const nameMap = {}
