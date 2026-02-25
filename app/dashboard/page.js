@@ -198,6 +198,41 @@ export default function Dashboard() {
   }, [running])
 
   useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && running) {
+        const savedAt = parseInt(localStorage.getItem('timerSavedAt'))
+        const savedTimeLeft = parseInt(localStorage.getItem('timerTimeLeft'))
+        if (savedAt && savedTimeLeft) {
+          const secondsPassed = Math.floor((Date.now() - savedAt) / 1000)
+          const adjusted = Math.max(0, savedTimeLeft - secondsPassed)
+          clearInterval(intervalRef.current)
+          if (adjusted <= 0) {
+            timerFinishedRef.current = true
+            setRunning(false)
+            setTimeLeft(0)
+          } else {
+            setTimeLeft(adjusted)
+            intervalRef.current = setInterval(() => {
+              setTimeLeft((prev) => {
+                if (prev <= 1) {
+                  clearInterval(intervalRef.current)
+                  timerFinishedRef.current = true
+                  setRunning(false)
+                  return 0
+                }
+                return prev - 1
+              })
+            }, 1000)
+          }
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [running])
+
+  useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
