@@ -166,17 +166,20 @@ export default function Dashboard() {
   useEffect(() => {
     if (running && shouldAutoStart.current) {
       shouldAutoStart.current = false
+      const startTime = Date.now()
+      const startValue = timeLeft
       intervalRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(intervalRef.current)
-            timerFinishedRef.current = true
-            setRunning(false)
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
+        const elapsed = Math.floor((Date.now() - startTime) / 1000)
+        const next = startValue - elapsed
+        if (next <= 0) {
+          clearInterval(intervalRef.current)
+          timerFinishedRef.current = true
+          setRunning(false)
+          setTimeLeft(0)
+        } else {
+          setTimeLeft(next)
+        }
+      }, 500)
     }
   }, [running])
 
@@ -402,17 +405,20 @@ export default function Dashboard() {
 
   const startTimer = () => {
     setRunning(true)
+    const startTime = Date.now()
+    const startValue = timeLeft
     intervalRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(intervalRef.current)
-          timerFinishedRef.current = true
-          setRunning(false)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+      const elapsed = Math.floor((Date.now() - startTime) / 1000)
+      const next = startValue - elapsed
+      if (next <= 0) {
+        clearInterval(intervalRef.current)
+        timerFinishedRef.current = true
+        setRunning(false)
+        setTimeLeft(0)
+      } else {
+        setTimeLeft(next)
+      }
+    }, 500)
   }
 
   const pauseTimer = () => { clearInterval(intervalRef.current); setRunning(false) }
