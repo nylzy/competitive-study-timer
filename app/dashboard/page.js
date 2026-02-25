@@ -13,15 +13,15 @@ const THEMES = {
     border: '#1a1a1a',
     borderSubtle: '#111',
     text: '#fff',
-    textMuted: '#444',
-    textDim: '#666',
-    textFaint: '#333',
+    textMuted: '#aaa',
+    textDim: '#888',
+    textFaint: '#666',
     inputBg: '#111',
-    inputBorder: '#222',
+    inputBorder: '#333',
     accent: '#fff',
     accentText: '#000',
     selectBg: '#111',
-    selectColor: '#888',
+    selectColor: '#aaa',
   },
   light: {
     bg: '#f5f5f5',
@@ -92,25 +92,6 @@ export default function Dashboard() {
   const timerFinishedRef = useRef(false)
   const router = useRouter()
   const [onlineCount, setOnlineCount] = useState(0)
-
-  useEffect(() => {
-    const channel = supabase.channel('online-users', {
-      config: { presence: { key: user?.id } }
-    })
-
-    channel
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState()
-        setOnlineCount(Object.keys(state).length)
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({ user_id: user?.id, online_at: new Date().toISOString() })
-        }
-      })
-
-    return () => supabase.removeChannel(channel)
-  }, [user])
 
   const t = theme === 'colour'
     ? { ...THEMES.dark, accent: accentColor, accentText: '#fff' }

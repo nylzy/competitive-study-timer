@@ -33,7 +33,7 @@ export default function LoginPage() {
   return (
   <div style={{ maxWidth: '400px', margin: '120px auto', padding: '0 20px' }}>
     <h1 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '8px' }}>Uni-Grind</h1>
-    <p style={{ fontSize: '12px', color: '#444', marginBottom: '48px' }}>Effort is visible.</p>
+    <p style={{ fontSize: '12px', color: '#777', marginBottom: '48px' }}>Effort is visible.</p>
 
     {error && <p style={{ fontSize: '12px', color: '#ff4444', marginBottom: '16px' }}>{error}</p>}
 
