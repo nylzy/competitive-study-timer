@@ -81,6 +81,8 @@ export default function Dashboard() {
   const [userRank, setUserRank] = useState(null)
   const [theme, setTheme] = useState('dark')
   const [accentColor, setAccentColor] = useState('#7c6aff')
+  const startTimeRef = useRef(null)
+  const startValueRef = useRef(null)
   const intervalRef = useRef(null)
   const isBreakRef = useRef(false)
   const workMinutesRef = useRef(25)
@@ -166,11 +168,11 @@ export default function Dashboard() {
   useEffect(() => {
     if (running && shouldAutoStart.current) {
       shouldAutoStart.current = false
-      const startTime = Date.now()
-      const startValue = timeLeft
+      startTimeRef.current = Date.now()
+      startValueRef.current = timeLeft
       intervalRef.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000)
-        const next = startValue - elapsed
+        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000)
+        const next = startValueRef.current - elapsed
         if (next <= 0) {
           clearInterval(intervalRef.current)
           timerFinishedRef.current = true
@@ -215,17 +217,20 @@ export default function Dashboard() {
             setTimeLeft(0)
           } else {
             setTimeLeft(adjusted)
-            intervalRef.current = setInterval(() => {
-              setTimeLeft((prev) => {
-                if (prev <= 1) {
+              startTimeRef.current = Date.now()
+              startValueRef.current = adjusted
+              intervalRef.current = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000)
+                const next = startValueRef.current - elapsed
+                if (next <= 0) {
                   clearInterval(intervalRef.current)
                   timerFinishedRef.current = true
                   setRunning(false)
-                  return 0
+                  setTimeLeft(0)
+                } else {
+                  setTimeLeft(next)
                 }
-                return prev - 1
-              })
-            }, 1000)
+              }, 500)
           }
         }
       }
@@ -404,12 +409,12 @@ export default function Dashboard() {
   }
 
   const startTimer = () => {
+    startTimeRef.current = Date.now()
+    startValueRef.current = timeLeft
     setRunning(true)
-    const startTime = Date.now()
-    const startValue = timeLeft
     intervalRef.current = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000)
-      const next = startValue - elapsed
+      const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000)
+      const next = startValueRef.current - elapsed
       if (next <= 0) {
         clearInterval(intervalRef.current)
         timerFinishedRef.current = true
