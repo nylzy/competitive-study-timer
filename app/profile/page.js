@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
-import universities from '../../lib/universities.json'
 
 const MAJORS = [
   'Accounting', 'Actuarial Science', 'Anatomy', 'Biochemistry', 'Biology',
@@ -63,15 +62,11 @@ export default function Profile() {
   }, [university])
 
   const searchUniversities = async (query) => {
-  if (query.length < 2) {
-    setUniResults([])
-    return
+    if (query.length < 2) { setUniResults([]); return }
+    const res = await fetch(`/api/universities?q=${query}`)
+    const data = await res.json()
+    setUniResults(data)
   }
-
-  const res = await fetch(`/api/universities?q=${query}`)
-  const data = await res.json()
-  setUniResults(data)
-}
 
   const handleUniInput = (val) => {
     setUniSearch(val)
@@ -118,30 +113,27 @@ export default function Profile() {
     router.push('/login')
   }
 
-  const selectStyle = {
-    display: 'block', width: '100%', marginBottom: '12px',
-    padding: '12px', background: '#111', border: '1px solid #222',
-    color: '#888', fontSize: '14px', outline: 'none'
-  }
+  const labelStyle = { fontSize: '11px', color: '#aaa', marginBottom: '8px' }
+  const inputStyle = { display: 'block', width: '100%', marginBottom: '12px', padding: '12px', background: '#111', border: '1px solid #333', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }
+  const selectStyle = { display: 'block', width: '100%', marginBottom: '12px', padding: '12px', background: '#111', border: '1px solid #333', color: '#aaa', fontSize: '14px', outline: 'none' }
 
   return (
-    <div style={{ maxWidth: '400px', margin: '80px auto', padding: '0 20px' }}>
+    <div style={{ background: '#0a0a0a', minHeight: '100vh', color: '#fff' }}>
+    <div style={{ maxWidth: '400px', margin: '0 auto', padding: '80px 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '48px' }}>
         <div>
           <h1 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Profile</h1>
-          <p style={{ fontSize: '12px', color: '#444', marginTop: '4px' }}>{user?.email}</p>
+          <p style={{ fontSize: '12px', color: '#aaa', marginTop: '4px' }}>{user?.email}</p>
         </div>
         <button
           onClick={() => router.push('/dashboard')}
-          style={{ background: 'transparent', color: '#444', border: '1px solid #222', fontSize: '11px', padding: '6px 14px', cursor: 'pointer' }}
-        >
-          Dashboard
-        </button>
+          style={{ background: 'transparent', color: '#aaa', border: '1px solid #333', fontSize: '11px', padding: '6px 14px', cursor: 'pointer' }}
+        >Dashboard</button>
       </div>
 
       {error && <p style={{ fontSize: '12px', color: '#ff4444', marginBottom: '16px' }}>{error}</p>}
 
-      <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>University</p>
+      <p style={labelStyle}>University</p>
       <div ref={uniRef} style={{ position: 'relative', marginBottom: '12px' }}>
         <input
           type="text"
@@ -149,10 +141,10 @@ export default function Profile() {
           value={uniSearch}
           onChange={(e) => handleUniInput(e.target.value)}
           onFocus={() => uniSearch.length >= 2 && setShowUniDropdown(true)}
-          style={{ width: '100%', padding: '12px', background: '#111', border: `1px solid ${university ? '#555' : '#222'}`, color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+          style={{ ...inputStyle, marginBottom: 0, border: `1px solid ${university ? '#666' : '#333'}` }}
         />
         {showUniDropdown && uniResults.length > 0 && (
-          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#111', border: '1px solid #222', borderTop: 'none', zIndex: 10, maxHeight: '240px', overflowY: 'auto' }}>
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#111', border: '1px solid #333', borderTop: 'none', zIndex: 10, maxHeight: '240px', overflowY: 'auto' }}>
             {uniResults.map((name) => (
               <div
                 key={name}
@@ -168,47 +160,54 @@ export default function Profile() {
         )}
       </div>
 
-      <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>Major</p>
+      <p style={labelStyle}>Major</p>
       <select value={major1} onChange={(e) => setMajor1(e.target.value)} style={selectStyle}>
         <option value="" disabled>Select major</option>
         {MAJORS.map((m) => <option key={m} value={m}>{m}</option>)}
       </select>
 
-      <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>Second major <span style={{ color: '#333' }}>(optional)</span></p>
+      <p style={labelStyle}>Second major <span style={{ color: '#666' }}>(optional)</span></p>
       <select value={major2} onChange={(e) => setMajor2(e.target.value)} style={{ ...selectStyle, marginBottom: '32px' }}>
         <option value="">None</option>
         {MAJORS.filter((m) => m !== major1).map((m) => <option key={m} value={m}>{m}</option>)}
       </select>
 
-      <p style={{ fontSize: '11px', color: '#444', marginBottom: '8px' }}>Units</p>
+      <p style={labelStyle}>Units</p>
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
         <input
           type="text" placeholder="e.g. CITS2200"
           value={newUnit}
           onChange={(e) => setNewUnit(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && addUnit()}
-          style={{ flex: 1, padding: '8px', background: '#111', border: '1px solid #222', color: '#fff', fontSize: '13px', outline: 'none' }}
+          style={{ flex: 1, padding: '8px', background: '#111', border: '1px solid #333', color: '#fff', fontSize: '13px', outline: 'none' }}
         />
-        <button onClick={addUnit} style={{ padding: '8px 16px', cursor: 'pointer' }}>Add</button>
+        <button onClick={addUnit} style={{ padding: '8px 16px', background: '#fff', color: '#000', border: 'none', cursor: 'pointer' }}>Add</button>
       </div>
 
       {units.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '32px' }}>
           {units.map((unit) => (
-            <div key={unit} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', border: '1px solid #222', fontSize: '12px', color: '#888' }}>
+            <div key={unit} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', border: '1px solid #333', fontSize: '12px', color: '#aaa' }}>
               {unit}
-              <span onClick={() => removeUnit(unit)} style={{ cursor: 'pointer', color: '#444', marginLeft: '4px' }}>×</span>
+              <span onClick={() => removeUnit(unit)} style={{ cursor: 'pointer', color: '#666', marginLeft: '4px' }}>×</span>
             </div>
           ))}
         </div>
       )}
 
-      <button onClick={handleSave} style={{ marginRight: '12px', cursor: 'pointer' }}>
+      <button
+        onClick={handleSave}
+        style={{ marginRight: '12px', background: '#fff', color: '#000', border: 'none', padding: '10px 24px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+      >
         {saved ? 'Saved!' : 'Save changes'}
       </button>
-      <button onClick={handleLogout} style={{ background: 'transparent', color: '#444', border: '1px solid #222', cursor: 'pointer' }}>
+      <button
+        onClick={handleLogout}
+        style={{ background: 'transparent', color: '#aaa', border: '1px solid #333', padding: '10px 24px', fontSize: '13px', cursor: 'pointer' }}
+      >
         Log out
       </button>
+    </div>
     </div>
   )
 }
