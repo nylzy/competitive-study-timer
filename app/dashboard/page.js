@@ -91,6 +91,26 @@ export default function Dashboard() {
   const shouldAutoStart = useRef(false)
   const timerFinishedRef = useRef(false)
   const router = useRouter()
+  const [onlineCount, setOnlineCount] = useState(0)
+
+  useEffect(() => {
+    const channel = supabase.channel('online-users', {
+      config: { presence: { key: user?.id } }
+    })
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState()
+        setOnlineCount(Object.keys(state).length)
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ user_id: user?.id, online_at: new Date().toISOString() })
+        }
+      })
+
+    return () => supabase.removeChannel(channel)
+  }, [user])
 
   const t = theme === 'colour'
     ? { ...THEMES.dark, accent: accentColor, accentText: '#fff' }
@@ -239,6 +259,26 @@ export default function Dashboard() {
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [running])
+
+  useEffect(() => {
+    if (!user) return
+    const channel = supabase.channel('online-users', {
+      config: { presence: { key: user.id } }
+    })
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState()
+        setOnlineCount(Object.keys(state).length)
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ user_id: user.id, online_at: new Date().toISOString() })
+        }
+      })
+
+    return () => supabase.removeChannel(channel)
+  }, [user])
 
   useEffect(() => {
     const getUser = async () => {
@@ -494,6 +534,10 @@ export default function Dashboard() {
           <h1 style={{ fontSize: '13px', fontWeight: '700', letterSpacing: '0.15em', textTransform: 'uppercase', color: t.text }}>Uni-Grind</h1>
           <p style={{ fontSize: '12px', color: t.textMuted, marginTop: '4px' }}>
             {profile?.display_name} · {profile?.university} · {profile?.major1}{profile?.major2 ? ` & ${profile?.major2}` : ''}
+          </p>
+          <p style={{ fontSize: '11px', color: t.textFaint, marginTop: '4px' }}>
+            <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', marginRight: '6px', verticalAlign: 'middle' }} />
+            {onlineCount} {onlineCount === 1 ? 'person' : 'people'} online now
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
