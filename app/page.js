@@ -74,10 +74,10 @@ export default function Landing() {
       <div style={{ maxWidth: '640px', margin: '0 auto', padding: '80px 20px 100px' }}>
         <p style={{ fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#aaa', marginBottom: '24px' }}>For ambitious university students</p>
         <h2 style={{ fontSize: '48px', fontWeight: '700', lineHeight: 1.1, letterSpacing: '-1px', marginBottom: '24px' }}>
-          Study harder.<br />Prove it.
+          Study more.<br />Together.
         </h2>
         <p style={{ fontSize: '15px', color: '#999', lineHeight: 1.7, marginBottom: '40px', maxWidth: '420px' }}>
-          Track your study hours with a Pomodoro timer, see how you stack up against other students, and understand where your time actually goes.
+          Track your study hours with a Pomodoro timer, stay accountable with friends, and understand where your time actually goes.
         </p>
         <button
           onClick={() => router.push('/login')}
@@ -114,7 +114,7 @@ export default function Landing() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
             {[
               { title: 'Pomodoro timer', body: 'Customisable focus and break intervals. The timer keeps running even if you navigate away.' },
-              { title: 'Leaderboard', body: 'See who\'s putting in the most hours at your university. Weekly and all-time rankings for friendly competition.' },
+              { title: 'Leaderboard', body: 'See how your friends and coursemates are doing. Weekly and all-time rankings to keep each other accountable — not competitive.' },
               { title: 'Unit breakdown', body: 'A weekly chart showing how many minutes you\'ve spent on each unit. Spot if you\'ve been neglecting a subject or over-indexing on one before it\'s too late.' },
               { title: 'Daily streak', body: 'Track consecutive days of study. Simple but effective motivation to show up every day.' },
             ].map((f) => (
@@ -157,7 +157,7 @@ export default function Landing() {
       <div style={{ borderTop: '1px solid #111', padding: '80px 0' }}>
         <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 20px' }}>
           <p style={{ fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#444', marginBottom: '8px' }}>Leaderboard</p>
-          <p style={{ fontSize: '14px', color: '#bbb', marginBottom: '40px' }}>This week's top students across the world.</p>
+          <p style={{ fontSize: '14px', color: '#bbb', marginBottom: '40px' }}>This week's most consistent students.</p>
           {topStudents.length === 0 ? (
             <p style={{ fontSize: '12px', color: '#999' }}>No study sessions this week yet — be the first.</p>
           ) : topStudents.map((entry, index) => {
@@ -189,7 +189,7 @@ export default function Landing() {
       <div style={{ borderTop: '1px solid #111', padding: '100px 0' }}>
         <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 20px', textAlign: 'center' }}>
           <h2 style={{ fontSize: '32px', fontWeight: '700', letterSpacing: '-0.5px', marginBottom: '16px' }}>Start tracking today.</h2>
-          <p style={{ fontSize: '14px', color: '#999', marginBottom: '40px' }}>Free. No BS. Just study hours.</p>
+          <p style={{ fontSize: '14px', color: '#999', marginBottom: '40px' }}>Free. Study with people you know.</p>
           <button
             onClick={() => router.push('/login')}
             style={{ background: '#fff', color: '#000', border: 'none', fontSize: '13px', fontWeight: '600', letterSpacing: '0.1em', padding: '14px 32px', cursor: 'pointer' }}
@@ -201,7 +201,7 @@ export default function Landing() {
 
       {/* Footer */}
       <div style={{ borderTop: '1px solid #111', padding: '32px 20px', textAlign: 'center' }}>
-        <p style={{ fontSize: '11px', color: '#555' }}>Uni-Grind · Built for ambitious students.</p>
+        <p style={{ fontSize: '11px', color: '#555' }}>Uni-Grind · Built for students, by a student.</p>
       </div>
 
     </div>
