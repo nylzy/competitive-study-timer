@@ -81,6 +81,7 @@ export default function Dashboard() {
   const [userRank, setUserRank] = useState(null)
   const [theme, setTheme] = useState('dark')
   const [accentColor, setAccentColor] = useState('#7c6aff')
+  const [newTaskDue, setNewTaskDue] = useState('')
   const startTimeRef = useRef(null)
   const startValueRef = useRef(null)
   const intervalRef = useRef(null)
@@ -319,7 +320,7 @@ export default function Dashboard() {
       })
       const userIds = Object.keys(totals)
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('public_profiles')
         .select('id, display_name, university, major1, major2')
         .in('id', userIds)
       const nameMap = {}
@@ -388,21 +389,36 @@ export default function Dashboard() {
       .select('*')
       .eq('user_id', userId)
       .eq('completed', false)
-      .order('created_at', { ascending: true })
-    if (data) setTasks(data)
+      .order('due_date', { ascending: true, nullsFirst: false })
+    if (data) {
+      const sorted = [...data].sort((a, b) => {
+        if (!a.due_date && !b.due_date) return new Date(a.created_at) - new Date(b.created_at)
+        if (!a.due_date) return 1
+        if (!b.due_date) return -1
+        return new Date(a.due_date) - new Date(b.due_date)
+      })
+      setTasks(sorted)
+    }
   }
 
   const addTask = async () => {
     if (!newTaskTitle.trim()) return
     const { data } = await supabase
       .from('tasks')
-      .insert({ user_id: user.id, title: newTaskTitle.trim(), unit: newTaskUnit || null })
+      .insert({ user_id: user.id, title: newTaskTitle.trim(), unit: newTaskUnit || null, due_date: newTaskDue || null })
       .select()
       .single()
     if (data) {
-      setTasks([...tasks, data])
+      const updated = [...tasks, data].sort((a, b) => {
+        if (!a.due_date && !b.due_date) return new Date(a.created_at) - new Date(b.created_at)
+        if (!a.due_date) return 1
+        if (!b.due_date) return -1
+        return new Date(a.due_date) - new Date(b.due_date)
+      })
+      setTasks(updated)
       setNewTaskTitle('')
       setNewTaskUnit('')
+      setNewTaskDue('')
     }
   }
 
@@ -643,6 +659,11 @@ export default function Dashboard() {
             <div onClick={() => setActiveTask(activeTask?.id === task.id ? null : task)} style={{ cursor: 'pointer', flex: 1 }}>
               <p style={{ fontSize: '13px', color: activeTask?.id === task.id ? t.text : t.textDim }}>{task.title}</p>
               {task.unit && <p style={{ fontSize: '11px', color: t.textFaint, marginTop: '2px' }}>{task.unit}</p>}
+              {task.due_date && (
+                <p style={{ fontSize: '11px', color: t.textFaint, marginTop: '2px' }}>
+                  Due {new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+                </p>
+              )}
             </div>
             <button onClick={() => completeTask(task.id)}
               style={{ background: 'transparent', color: t.textFaint, border: `1px solid ${t.inputBorder}`, fontSize: '10px', padding: '4px 10px', marginLeft: '12px', cursor: 'pointer' }}>
@@ -651,16 +672,19 @@ export default function Dashboard() {
           </div>
         ))}
 
-        <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '16px', flexWrap: 'wrap' }}>
           <input type="text" placeholder="New task" value={newTaskTitle}
             onChange={(e) => setNewTaskTitle(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addTask()}
-            style={{ flex: 2, padding: '8px', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text, fontSize: '13px', outline: 'none' }} />
+            style={{ flex: 2, minWidth: '140px', padding: '8px', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text, fontSize: '13px', outline: 'none' }} />
           <select value={newTaskUnit} onChange={(e) => setNewTaskUnit(e.target.value)}
-            style={{ flex: 1, padding: '8px', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: newTaskUnit ? t.text : t.textDim, fontSize: '13px', outline: 'none' }}>
+            style={{ flex: 1, minWidth: '80px', padding: '8px', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: newTaskUnit ? t.text : t.textDim, fontSize: '13px', outline: 'none' }}>
             <option value="">No unit</option>
             {(profile?.units || []).map((u) => (<option key={u} value={u}>{u}</option>))}
           </select>
+          <input type="date" value={newTaskDue}
+            onChange={(e) => setNewTaskDue(e.target.value)}
+            style={{ flex: 1, minWidth: '120px', padding: '8px', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: newTaskDue ? t.text : t.textDim, fontSize: '13px', outline: 'none', colorScheme: theme === 'light' || theme === 'warm' ? 'light' : 'dark' }} />
           <button onClick={addTask}
             style={{ padding: '8px 16px', whiteSpace: 'nowrap', background: t.accent, color: t.accentText, border: 'none', cursor: 'pointer' }}>
             + Add
