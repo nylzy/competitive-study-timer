@@ -17,7 +17,7 @@ export const metadata = {
   title: 'UniGrind — Study Tracker for University Students',
     description: 'Track your study hours with friends, see your unit breakdown, and stay accountable.',  openGraph: {
     title: 'UniGrind — Study Tracker for University Students',
-    description: 'Track your study hours, compete on the leaderboard, and see your unit breakdown.',
+    description: 'Track your study hours and see your unit breakdown.',
     url: 'https://www.uni-grind.com',
     siteName: 'UniGrind',
     images: [{
