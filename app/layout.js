@@ -13,15 +13,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
+  metadataBase: new URL('https://www.uni-grind.com')
   title: 'UniGrind — Study Tracker for University Students',
-  description: 'Track your study hours, compete on the leaderboard, and see your unit breakdown.',
-  openGraph: {
+    description: 'Track your study hours with friends, see your unit breakdown, and stay accountable.',  openGraph: {
     title: 'UniGrind — Study Tracker for University Students',
     description: 'Track your study hours, compete on the leaderboard, and see your unit breakdown.',
     url: 'https://www.uni-grind.com',
     siteName: 'UniGrind',
     images: [{
-      url: 'https://www.uni-grind.com/opengraph-image',
+      images: ['https://www.uni-grind.com/opengraph-image?v=2'],
       width: 1200,
       height: 630,
     }],
@@ -30,8 +30,8 @@ export const metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'UniGrind',
-    description: 'Competitive study tracker for university students.',
-    images: ['https://www.uni-grind.com/opengraph-image'],
+    description: 'Study tracker for university students. Track hours, stay accountable, see where your time goes.',
+    images: ['https://www.uni-grind.com/opengraph-image?v=2'],
   }
 }
 
