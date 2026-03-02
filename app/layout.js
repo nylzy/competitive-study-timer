@@ -1,6 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Analytics } from "@vercel/analytics/react";
+import { Analytics } from '@vercel/analytics/react';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,48 +13,32 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  metadataBase: new URL("https://www.uni-grind.com"),
-
-  title: {
-    default: "UniGrind — Study Tracker for University Students",
-    template: "%s | UniGrind",
-  },
-
-  description:
-    "Track your study hours, compete on the leaderboard, and see your unit breakdown.",
-
+  title: 'UniGrind — Study Tracker for University Students',
+  description: 'Track your study hours, compete on the leaderboard, and see your unit breakdown.',
   openGraph: {
-    title: "UniGrind — Study Tracker for University Students",
-    description:
-      "Track your study hours, compete on the leaderboard, and see your unit breakdown.",
-    url: "/",
-    siteName: "UniGrind",
-    images: [
-      {
-        url: "/opengraph-image",
-        width: 1200,
-        height: 630,
-      },
-    ],
-    locale: "en_AU",
-    type: "website",
+    title: 'UniGrind — Study Tracker for University Students',
+    description: 'Track your study hours, compete on the leaderboard, and see your unit breakdown.',
+    url: 'https://www.uni-grind.com',
+    siteName: 'UniGrind',
+    images: [{
+      url: 'https://www.uni-grind.com/opengraph-image',
+      width: 1200,
+      height: 630,
+    }],
+    type: 'website',
   },
-
   twitter: {
-    card: "summary_large_image",
-    title: "UniGrind — Study Tracker for University Students",
-    description:
-      "Track your study hours, compete on the leaderboard, and see your unit breakdown.",
-    images: ["/opengraph-image"],
-  },
-};
+    card: 'summary_large_image',
+    title: 'UniGrind',
+    description: 'Competitive study tracker for university students.',
+    images: ['https://www.uni-grind.com/opengraph-image'],
+  }
+}
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
         <Analytics />
       </body>
