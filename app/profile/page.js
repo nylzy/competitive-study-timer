@@ -36,7 +36,7 @@ export default function Profile() {
       setUser(user)
       const { data } = await supabase
         .from('profiles')
-        .select('university, major1, major2, units')
+        .select('university, major1, major2, units, incognito')
         .eq('id', user.id)
         .single()
       if (data) {
@@ -45,6 +45,7 @@ export default function Profile() {
         setMajor1(data.major1 || '')
         setMajor2(data.major2 || '')
         setUnits(data.units || [])
+        setIncognito(data.incognito || false)
       }
     }
     getUser()
@@ -91,22 +92,24 @@ export default function Profile() {
 
   const removeUnit = (unit) => setUnits(units.filter((u) => u !== unit))
 
-  const handleSave = async () => {
-    if (!university) {
-      setError('Please select your university from the list.')
-      return
-    }
-    const { error } = await supabase
-      .from('profiles')
-      .update({ university, major1, major2: major2 || null, units })
-      .eq('id', user.id)
-    if (error) {
-      setError(error.message)
-    } else {
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    }
+  const [incognito, setIncognito] = useState(false)
+
+const handleSave = async () => {
+  if (!university) {
+    setError('Please select your university from the list.')
+    return
   }
+  const { error } = await supabase
+    .from('profiles')
+    .update({ university, major1, major2: major2 || null, units, incognito })
+    .eq('id', user.id)
+  if (error) {
+    setError(error.message)
+  } else {
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+}
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -194,6 +197,28 @@ export default function Profile() {
           ))}
         </div>
       )}
+
+      <div
+        onClick={() => setIncognito(!incognito)}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#111', border: '1px solid #222', cursor: 'pointer', marginBottom: '32px' }}
+      >
+        <div>
+          <p style={{ fontSize: '13px', color: '#fff' }}>Hide me from the leaderboard</p>
+          <p style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>Your hours won't appear on public rankings</p>
+        </div>
+        <div style={{
+          width: '36px', height: '20px', borderRadius: '10px',
+          background: incognito ? '#fff' : '#333',
+          position: 'relative', transition: 'background 0.2s', flexShrink: 0, marginLeft: '16px'
+        }}>
+          <div style={{
+            position: 'absolute', top: '3px',
+            left: incognito ? '19px' : '3px',
+            width: '14px', height: '14px', borderRadius: '50%',
+            background: incognito ? '#000' : '#666', transition: 'left 0.2s'
+          }} />
+        </div>
+      </div>
 
       <button
         onClick={handleSave}

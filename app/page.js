@@ -8,9 +8,9 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 // add this constant at the top of the file
 const SAMPLE_UNIT_DATA = [
   { unit: 'CITS2200', minutes: 60 },
-  { unit: 'CITS3001', minutes: 180 },
-  { unit: 'MATH1012', minutes: 95 },
-  { unit: 'CITS1401', minutes: 150 },
+  { unit: 'CITS2005', minutes: 180 },
+  { unit: 'CITS3403', minutes: 95 },
+  { unit: 'CITS3002', minutes: 150 },
 ]
 
 const sampleBarColors = ['#ffffff', '#888888', '#555555', '#333333']
@@ -37,7 +37,7 @@ export default function Landing() {
         if (userIds.length === 0) return
         const { data: profiles } = await supabase
           .from('public_profiles')
-          .select('id, display_name, university, major1')
+          .select('id, display_name, university, major1, incognito')
           .in('id', userIds)
         const nameMap = {}
         profiles?.forEach(p => { nameMap[p.id] = p })
@@ -47,7 +47,9 @@ export default function Landing() {
             display_name: nameMap[user_id]?.display_name || 'Anonymous',
             university: nameMap[user_id]?.university || '',
             major1: nameMap[user_id]?.major1 || '',
+            incognito: nameMap[user_id]?.incognito || false,
           }))
+          .filter((entry) => !entry.incognito)
           .sort((a, b) => b.minutes - a.minutes)
           .slice(0, 5)
         setTopStudents(sorted)

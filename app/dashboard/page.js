@@ -276,7 +276,7 @@ export default function Dashboard() {
         setUser(user)
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('display_name, university, major1, major2, units')
+          .select('display_name, university, major1, major2, units, incognito')
           .eq('id', user.id)
           .single()
         setProfile(profileData)
@@ -326,18 +326,20 @@ export default function Dashboard() {
       const userIds = Object.keys(totals)
       const { data: profiles } = await supabase
         .from('public_profiles')
-        .select('id, display_name, university, major1, major2')
+        .select('id, display_name, university, major1, major2, incognito')
         .in('id', userIds)
       const nameMap = {}
-      profiles?.forEach((p) => { nameMap[p.id] = { display_name: p.display_name, university: p.university, major1: p.major1, major2: p.major2 } })
+      profiles?.forEach((p) => { nameMap[p.id] = { display_name: p.display_name, university: p.university, major1: p.major1, major2: p.major2, incognito: p.incognito } })
       let sorted = Object.entries(totals)
         .map(([user_id, minutes]) => ({
           user_id, minutes,
           display_name: nameMap[user_id]?.display_name || 'Anonymous',
           university: nameMap[user_id]?.university || '',
           major1: nameMap[user_id]?.major1 || '',
-          major2: nameMap[user_id]?.major2 || ''
+          major2: nameMap[user_id]?.major2 || '',
+          incognito: nameMap[user_id]?.incognito || false,
         }))
+        .filter((entry) => !entry.incognito)  // add this
         .filter((entry) => uniFilter === 'All' || entry.university === uniFilter)
         .sort((a, b) => b.minutes - a.minutes)
 
