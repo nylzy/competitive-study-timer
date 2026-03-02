@@ -79,7 +79,7 @@ export default function Dashboard() {
   const [newTaskUnit, setNewTaskUnit] = useState('')
   const [unitData, setUnitData] = useState([])
   const [userRank, setUserRank] = useState(null)
-  const [theme, setTheme] = useState('dark')
+  const [theme, setTheme] = useState('warm')
   const [accentColor, setAccentColor] = useState('#7c6aff')
   const [newTaskDue, setNewTaskDue] = useState('')
   const startTimeRef = useRef(null)
@@ -99,9 +99,14 @@ export default function Dashboard() {
     : THEMES[theme] || THEMES.dark
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') || 'dark'
+    const savedTheme = localStorage.getItem('theme')
+    // only use saved theme if user explicitly set it, otherwise default to warm
+    if (savedTheme && savedTheme !== 'dark') {
+      setTheme(savedTheme)
+    } else if (!savedTheme) {
+      setTheme('warm')
+    }
     const savedAccent = localStorage.getItem('accentColor') || '#7c6aff'
-    setTheme(savedTheme)
     setAccentColor(savedAccent)
   }, [])
 
@@ -255,7 +260,7 @@ export default function Dashboard() {
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await channel.track({ user_id: user.id, online_at: new Date().toISOString() })
+          await channel.track({ online_at: new Date().toISOString() })
         }
       })
 

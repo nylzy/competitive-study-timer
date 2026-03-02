@@ -107,6 +107,32 @@ export default function Landing() {
         </div>
       </div>
 
+      {/* Unit breakdown preview */}
+        <div style={{ borderTop: '1px solid #111', padding: '80px 0' }}>
+          <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 20px' }}>
+            <p style={{ fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#aaa', marginBottom: '8px' }}>Unit Breakdown</p>
+            <p style={{ fontSize: '14px', color: '#999', marginBottom: '40px' }}>See exactly where your time is going each week.</p>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={SAMPLE_UNIT_DATA} barSize={32}>
+                <XAxis dataKey="unit" tick={{ fill: '#666', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#666', fontSize: 11 }} axisLine={false} tickLine={false} unit="m" />
+                <Tooltip
+                  contentStyle={{ background: '#111', border: '1px solid #222', borderRadius: 0 }}
+                  labelStyle={{ color: '#fff', fontSize: 11 }}
+                  itemStyle={{ color: '#aaa', fontSize: 11 }}
+                  formatter={(value) => [`${value}m`, 'Minutes']}
+                />
+                <Bar dataKey="minutes" radius={0}>
+                  {SAMPLE_UNIT_DATA.map((entry, index) => (
+                    <Cell key={entry.unit} fill={sampleBarColors[index % sampleBarColors.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <p style={{ fontSize: '11px', color: '#555', marginTop: '16px' }}>* example data</p>
+          </div>
+        </div>
+
       {/* Features */}
       <div style={{ borderTop: '1px solid #111', padding: '80px 0' }}>
         <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 20px' }}>
@@ -124,32 +150,6 @@ export default function Landing() {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* Unit breakdown preview */}
-      <div style={{ borderTop: '1px solid #111', padding: '80px 0' }}>
-        <div style={{ maxWidth: '640px', margin: '0 auto', padding: '0 20px' }}>
-          <p style={{ fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#aaa', marginBottom: '8px' }}>Unit Breakdown</p>
-          <p style={{ fontSize: '14px', color: '#999', marginBottom: '40px' }}>See exactly where your time is going each week.</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={SAMPLE_UNIT_DATA} barSize={32}>
-              <XAxis dataKey="unit" tick={{ fill: '#666', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#666', fontSize: 11 }} axisLine={false} tickLine={false} unit="m" />
-              <Tooltip
-                contentStyle={{ background: '#111', border: '1px solid #222', borderRadius: 0 }}
-                labelStyle={{ color: '#fff', fontSize: 11 }}
-                itemStyle={{ color: '#aaa', fontSize: 11 }}
-                formatter={(value) => [`${value}m`, 'Minutes']}
-              />
-              <Bar dataKey="minutes" radius={0}>
-                {SAMPLE_UNIT_DATA.map((entry, index) => (
-                  <Cell key={entry.unit} fill={sampleBarColors[index % sampleBarColors.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          <p style={{ fontSize: '11px', color: '#555', marginTop: '16px' }}>* example data</p>
         </div>
       </div>
 
