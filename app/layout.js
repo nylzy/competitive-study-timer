@@ -18,10 +18,10 @@ export const metadata = {
   openGraph: {
     title: 'UniGrind — Study Tracker for University Students',
     description: 'Track your study hours, compete on the leaderboard, and see your unit breakdown.',
-    url: 'https://uni-grind.com',
+    url: 'https://www.uni-grind.com',
     siteName: 'UniGrind',
     images: [{
-      url: 'https://uni-grind.com/opengraph-image',
+      url: 'https://www.uni-grind.com/opengraph-image',
       width: 1200,
       height: 630,
     }],
@@ -31,7 +31,7 @@ export const metadata = {
     card: 'summary_large_image',
     title: 'UniGrind',
     description: 'Competitive study tracker for university students.',
-    images: ['https://uni-grind.com/opengraph-image'],
+    images: ['https://www.uni-grind.com/opengraph-image'],
   }
 }
 
