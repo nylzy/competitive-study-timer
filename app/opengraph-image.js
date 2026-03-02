@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
-export const alt = 'UniGrind - Study Tracker for Australian University Students'
+export const alt = 'UniGrind - Study together. Stay accountable.'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -10,7 +10,7 @@ export default async function Image() {
     (
       <div
         style={{
-          background: '#0a0a0a',
+          background: '#f5f0e8',
           width: '100%',
           height: '100%',
           display: 'flex',
@@ -24,16 +24,16 @@ export default async function Image() {
           fontWeight: '700',
           letterSpacing: '0.2em',
           textTransform: 'uppercase',
-          color: '#444',
+          color: '#494138',
           marginBottom: '24px',
           display: 'flex',
         }}>
-          FOR AUSTRALIAN UNIVERSITY STUDENTS
+          STUDY TOGETHER. STAY ACCOUNTABLE.
         </div>
         <div style={{
           fontSize: '96px',
           fontWeight: '700',
-          color: '#ffffff',
+          color: '#2c2416',
           letterSpacing: '-3px',
           lineHeight: 1,
           display: 'flex',
@@ -42,11 +42,11 @@ export default async function Image() {
         </div>
         <div style={{
           fontSize: '28px',
-          color: '#444',
+          color: '#6b5c48',
           marginTop: '24px',
           display: 'flex',
         }}>
-          Study harder. Prove it.
+          Study more. Together.
         </div>
         <div style={{
           marginTop: '60px',
@@ -56,7 +56,7 @@ export default async function Image() {
           {['Pomodoro Timer', 'Leaderboard', 'Unit Breakdown', 'Daily Streak'].map((feature) => (
             <div key={feature} style={{
               fontSize: '13px',
-              color: '#333',
+              color: '#161412',
               letterSpacing: '0.1em',
               textTransform: 'uppercase',
               display: 'flex',
