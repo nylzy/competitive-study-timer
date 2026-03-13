@@ -93,6 +93,7 @@ export default function Dashboard() {
   const timerFinishedRef = useRef(false)
   const router = useRouter()
   const [onlineCount, setOnlineCount] = useState(0)
+  const [newTaskPriority, setNewTaskPriority] = useState('')
 
   const t = theme === 'colour'
     ? { ...THEMES.dark, accent: accentColor, accentText: '#fff' }
@@ -399,10 +400,20 @@ export default function Dashboard() {
       .order('due_date', { ascending: true, nullsFirst: false })
     if (data) {
       const sorted = [...data].sort((a, b) => {
-        if (!a.due_date && !b.due_date) return new Date(a.created_at) - new Date(b.created_at)
+        if (!a.due_date && !b.due_date) {
+          if (a.priority && b.priority) return a.priority - b.priority
+          if (a.priority) return -1
+          if (b.priority) return 1
+          return new Date(a.created_at) - new Date(b.created_at)
+        }
         if (!a.due_date) return 1
         if (!b.due_date) return -1
-        return new Date(a.due_date) - new Date(b.due_date)
+        const dateDiff = new Date(a.due_date) - new Date(b.due_date)
+        if (dateDiff !== 0) return dateDiff
+        if (a.priority && b.priority) return a.priority - b.priority
+        if (a.priority) return -1
+        if (b.priority) return 1
+        return 0
       })
       setTasks(sorted)
     }
@@ -412,7 +423,7 @@ export default function Dashboard() {
     if (!newTaskTitle.trim()) return
     const { data } = await supabase
       .from('tasks')
-      .insert({ user_id: user.id, title: newTaskTitle.trim(), unit: newTaskUnit || null, due_date: newTaskDue || null })
+      .insert({ user_id: user.id, title: newTaskTitle.trim(), unit: newTaskUnit || null, due_date: newTaskDue || null, priority: newTaskPriority || null })
       .select()
       .single()
     if (data) {
@@ -426,6 +437,7 @@ export default function Dashboard() {
       setNewTaskTitle('')
       setNewTaskUnit('')
       setNewTaskDue('')
+      setNewTaskPriority('')
     }
   }
 
@@ -527,6 +539,8 @@ export default function Dashboard() {
   const barColors = theme === 'light' || theme === 'warm'
     ? [t.text, t.textMuted, t.textDim, t.textFaint, t.border]
     : ['#ffffff', '#888888', '#555555', '#333333', '#222222']
+
+  const priorityColors = { 1: '#f87171', 2: '#fb923c', 3: '#fbbf24' }
 
   return (
     <div style={{ background: t.bg, minHeight: '100vh', color: t.text }}>
@@ -661,7 +675,9 @@ export default function Dashboard() {
         {tasks.map((task) => (
           <div key={task.id} style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '12px 0', borderBottom: `1px solid ${t.borderSubtle}`
+            padding: '12px 0', paddingLeft: task.priority ? '10px' : '0',
+            borderBottom: `1px solid ${t.borderSubtle}`,
+            borderLeft: task.priority ? `3px solid ${priorityColors[task.priority]}` : '3px solid transparent',
           }}>
             <div onClick={() => setActiveTask(activeTask?.id === task.id ? null : task)} style={{ cursor: 'pointer', flex: 1 }}>
               <p style={{ fontSize: '13px', color: activeTask?.id === task.id ? t.text : t.textDim }}>{task.title}</p>
@@ -692,6 +708,13 @@ export default function Dashboard() {
           <input type="date" value={newTaskDue}
             onChange={(e) => setNewTaskDue(e.target.value)}
             style={{ flex: 1, minWidth: '120px', padding: '8px', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: newTaskDue ? t.text : t.textDim, fontSize: '13px', outline: 'none', colorScheme: theme === 'light' || theme === 'warm' ? 'light' : 'dark' }} />
+          <select value={newTaskPriority} onChange={(e) => setNewTaskPriority(e.target.value)}
+            style={{ flex: 1, minWidth: '80px', padding: '8px', background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: newTaskPriority ? t.text : t.textDim, fontSize: '13px', outline: 'none' }}>
+            <option value="">Priority</option>
+            <option value="1">P1</option>
+            <option value="2">P2</option>
+            <option value="3">P3</option>
+          </select>
           <button onClick={addTask}
             style={{ padding: '8px 16px', whiteSpace: 'nowrap', background: t.accent, color: t.accentText, border: 'none', cursor: 'pointer' }}>
             + Add
